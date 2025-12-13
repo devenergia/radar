@@ -1,0 +1,459 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RADAR API - Development Tasks",
+  "version": "1.0.0",
+  "lastUpdated": "2025-12-12",
+  "project": {
+    "name": "RADAR API",
+    "description": "API REST para fornecimento de dados à ANEEL conforme Ofício Circular 14/2025",
+    "deadline": "Dezembro/2025",
+    "baseLegal": "Ofício Circular nº 14/2025-SFE/ANEEL"
+  },
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Setup Inicial",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "task-1.1",
+          "name": "Configurar ambiente de desenvolvimento",
+          "status": "pending",
+          "priority": "critical",
+          "checklist": [
+            { "item": "Instalar Node.js 20 LTS", "done": false },
+            { "item": "Instalar Oracle Instant Client", "done": false },
+            { "item": "Configurar variáveis de ambiente (.env)", "done": false },
+            { "item": "Instalar dependências (npm install)", "done": false },
+            { "item": "Verificar conexão com banco Oracle", "done": false }
+          ]
+        },
+        {
+          "id": "task-1.2",
+          "name": "Configurar projeto TypeScript",
+          "status": "pending",
+          "priority": "high",
+          "checklist": [
+            { "item": "Configurar tsconfig.json com strict mode", "done": false },
+            { "item": "Configurar path aliases (@domain, @application, etc)", "done": false },
+            { "item": "Configurar ESLint com regras TypeScript", "done": false },
+            { "item": "Configurar Prettier", "done": false },
+            { "item": "Configurar husky para pre-commit hooks", "done": false }
+          ]
+        },
+        {
+          "id": "task-1.3",
+          "name": "Configurar banco de dados RADAR",
+          "status": "pending",
+          "priority": "critical",
+          "checklist": [
+            { "item": "Criar schema RADAR no Oracle", "done": false },
+            { "item": "Criar usuário radar_api", "done": false },
+            { "item": "Configurar DBLink para INSERVICE", "done": false },
+            { "item": "Configurar DBLink para INDICADORES", "done": false },
+            { "item": "Criar sinônimos para tabelas fonte", "done": false },
+            { "item": "Testar queries via DBLink", "done": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "Implementação do Domínio",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "task-2.1",
+          "name": "Implementar Value Objects",
+          "status": "pending",
+          "priority": "high",
+          "tdd": true,
+          "checklist": [
+            { "item": "[TEST] Criar testes para CodigoIBGE", "done": false },
+            { "item": "[CODE] Implementar CodigoIBGE", "done": false },
+            { "item": "[TEST] Criar testes para TipoInterrupcao", "done": false },
+            { "item": "[CODE] Implementar TipoInterrupcao", "done": false },
+            { "item": "[TEST] Criar testes para DataHoraBrasilia", "done": false },
+            { "item": "[CODE] Implementar DataHoraBrasilia", "done": false },
+            { "item": "[REFACTOR] Refatorar se necessário", "done": false }
+          ],
+          "acceptanceCriteria": [
+            "Todos os value objects são imutáveis",
+            "Validações no constructor",
+            "100% cobertura de testes"
+          ]
+        },
+        {
+          "id": "task-2.2",
+          "name": "Implementar Entidades",
+          "status": "pending",
+          "priority": "high",
+          "tdd": true,
+          "checklist": [
+            { "item": "[TEST] Criar testes para InterrupcaoEntity", "done": false },
+            { "item": "[CODE] Implementar InterrupcaoEntity", "done": false },
+            { "item": "[TEST] Criar testes para InterrupcaoAgregada", "done": false },
+            { "item": "[CODE] Implementar InterrupcaoAgregada", "done": false },
+            { "item": "[TEST] Criar testes para DemandaEntity", "done": false },
+            { "item": "[CODE] Implementar DemandaEntity", "done": false }
+          ],
+          "acceptanceCriteria": [
+            "Entidades encapsulam regras de negócio",
+            "Invariantes validados",
+            "Métodos de domínio implementados"
+          ]
+        },
+        {
+          "id": "task-2.3",
+          "name": "Definir Repository Interfaces (Ports)",
+          "status": "pending",
+          "priority": "high",
+          "checklist": [
+            { "item": "Definir InterrupcaoRepository interface", "done": false },
+            { "item": "Definir UniversoRepository interface", "done": false },
+            { "item": "Definir DemandaRepository interface", "done": false },
+            { "item": "Definir CacheRepository interface", "done": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-3",
+      "name": "Implementação da Camada de Aplicação",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "task-3.1",
+          "name": "Implementar Use Case GetInterrupcoesAtivas",
+          "status": "pending",
+          "priority": "critical",
+          "tdd": true,
+          "api": "API 1",
+          "checklist": [
+            { "item": "[TEST] Testar retorno vazio quando não há interrupções", "done": false },
+            { "item": "[TEST] Testar classificação PROGRAMADA/NAO_PROGRAMADA", "done": false },
+            { "item": "[TEST] Testar agregação por município + conjunto", "done": false },
+            { "item": "[TEST] Testar código IBGE correto", "done": false },
+            { "item": "[TEST] Testar tratamento de erro de banco", "done": false },
+            { "item": "[CODE] Implementar use case", "done": false },
+            { "item": "[REFACTOR] Aplicar padrões SOLID", "done": false }
+          ],
+          "businessRules": [
+            "Filtrar eventos onde is_open = 'T' e ag_id = '370'",
+            "PROGRAMADA se PLAN_ID IS NOT NULL em SWITCH_PLAN_TASKS",
+            "Código IBGE de IND_UNIVERSOS onde CD_TIPO_UNIVERSO = 2",
+            "Conjunto de OMS_CONNECTIVITY campo CONJ"
+          ]
+        },
+        {
+          "id": "task-3.2",
+          "name": "Implementar DTOs e Mappers",
+          "status": "pending",
+          "priority": "high",
+          "checklist": [
+            { "item": "Criar InterrupcoesRequestDTO", "done": false },
+            { "item": "Criar InterrupcoesResponseDTO (formato ANEEL)", "done": false },
+            { "item": "Criar ResponseMapper", "done": false },
+            { "item": "Validar conformidade com schema ANEEL", "done": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-4",
+      "name": "Implementação da Infraestrutura",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "task-4.1",
+          "name": "Implementar conexão Oracle",
+          "status": "pending",
+          "priority": "critical",
+          "checklist": [
+            { "item": "Configurar pool de conexões oracledb", "done": false },
+            { "item": "Implementar connection factory", "done": false },
+            { "item": "Implementar health check do banco", "done": false },
+            { "item": "Implementar retry com backoff", "done": false },
+            { "item": "Testar conexão via DBLink", "done": false }
+          ]
+        },
+        {
+          "id": "task-4.2",
+          "name": "Implementar Repositories (Adapters)",
+          "status": "pending",
+          "priority": "critical",
+          "tdd": true,
+          "checklist": [
+            { "item": "[TEST] Testes de integração para InterrupcaoRepository", "done": false },
+            { "item": "[CODE] Implementar OracleInterrupcaoRepository", "done": false },
+            { "item": "[CODE] Implementar queries com JOINs", "done": false },
+            { "item": "[TEST] Testar com dados reais via DBLink", "done": false }
+          ]
+        },
+        {
+          "id": "task-4.3",
+          "name": "Implementar Cache",
+          "status": "pending",
+          "priority": "high",
+          "checklist": [
+            { "item": "Implementar MemoryCache", "done": false },
+            { "item": "Configurar TTL por endpoint", "done": false },
+            { "item": "Implementar cache key strategy", "done": false },
+            { "item": "Implementar invalidação", "done": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-5",
+      "name": "Implementação da Interface HTTP",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "task-5.1",
+          "name": "Configurar Fastify Server",
+          "status": "pending",
+          "priority": "high",
+          "checklist": [
+            { "item": "Configurar Fastify com TypeScript", "done": false },
+            { "item": "Configurar logger Pino", "done": false },
+            { "item": "Registrar plugin CORS", "done": false },
+            { "item": "Registrar plugin Helmet", "done": false },
+            { "item": "Configurar serialização JSON", "done": false }
+          ]
+        },
+        {
+          "id": "task-5.2",
+          "name": "Implementar Middlewares",
+          "status": "pending",
+          "priority": "critical",
+          "checklist": [
+            { "item": "Implementar auth middleware (x-api-key)", "done": false },
+            { "item": "Implementar IP whitelist", "done": false },
+            { "item": "Implementar rate limiting", "done": false },
+            { "item": "Implementar error handler global", "done": false },
+            { "item": "Implementar request logging", "done": false }
+          ]
+        },
+        {
+          "id": "task-5.3",
+          "name": "Implementar Rotas API 1",
+          "status": "pending",
+          "priority": "critical",
+          "api": "API 1",
+          "checklist": [
+            { "item": "GET /quantitativointerrupcoesativas", "done": false },
+            { "item": "Validar query param dthRecuperacao", "done": false },
+            { "item": "Implementar schema de resposta", "done": false },
+            { "item": "Testes E2E da rota", "done": false }
+          ],
+          "aneelRequirements": [
+            "Endpoint em lowercase",
+            "Resposta em camelCase",
+            "HTTP 200 mesmo em erro (status no JSON)",
+            "Campo emailIndisponibilidade obrigatório"
+          ]
+        },
+        {
+          "id": "task-5.4",
+          "name": "Implementar Health e Metrics",
+          "status": "pending",
+          "priority": "high",
+          "checklist": [
+            { "item": "GET /health", "done": false },
+            { "item": "GET /metrics (Prometheus)", "done": false },
+            { "item": "Métricas de requisições", "done": false },
+            { "item": "Métricas de latência", "done": false },
+            { "item": "Métricas de conexões DB", "done": false }
+          ]
+        },
+        {
+          "id": "task-5.5",
+          "name": "Configurar Swagger/OpenAPI",
+          "status": "pending",
+          "priority": "medium",
+          "checklist": [
+            { "item": "Configurar @fastify/swagger", "done": false },
+            { "item": "Documentar todos os endpoints", "done": false },
+            { "item": "Incluir exemplos de request/response", "done": false },
+            { "item": "Gerar openapi.yaml", "done": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-6",
+      "name": "Testes e Qualidade",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "task-6.1",
+          "name": "Completar cobertura de testes",
+          "status": "pending",
+          "priority": "high",
+          "checklist": [
+            { "item": "Cobertura de statements >= 80%", "done": false },
+            { "item": "Cobertura de branches >= 75%", "done": false },
+            { "item": "Cobertura de functions >= 85%", "done": false },
+            { "item": "Todos os edge cases cobertos", "done": false }
+          ]
+        },
+        {
+          "id": "task-6.2",
+          "name": "Testes de integração com banco real",
+          "status": "pending",
+          "priority": "critical",
+          "checklist": [
+            { "item": "Testar queries via DBLink INSERVICE", "done": false },
+            { "item": "Testar queries via DBLink INDICADORES", "done": false },
+            { "item": "Validar dados retornados", "done": false },
+            { "item": "Testar cenários de timeout", "done": false }
+          ]
+        },
+        {
+          "id": "task-6.3",
+          "name": "Testes E2E",
+          "status": "pending",
+          "priority": "high",
+          "checklist": [
+            { "item": "Testar fluxo completo API 1", "done": false },
+            { "item": "Testar autenticação", "done": false },
+            { "item": "Testar rate limiting", "done": false },
+            { "item": "Testar cenários de erro", "done": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-7",
+      "name": "Deploy e Operação",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "task-7.1",
+          "name": "Configurar Docker",
+          "status": "pending",
+          "priority": "high",
+          "checklist": [
+            { "item": "Criar Dockerfile otimizado", "done": false },
+            { "item": "Criar docker-compose.yml", "done": false },
+            { "item": "Configurar multi-stage build", "done": false },
+            { "item": "Testar container localmente", "done": false }
+          ]
+        },
+        {
+          "id": "task-7.2",
+          "name": "Configurar CI/CD",
+          "status": "pending",
+          "priority": "high",
+          "checklist": [
+            { "item": "GitHub Actions workflow", "done": false },
+            { "item": "Pipeline de build e test", "done": false },
+            { "item": "Pipeline de deploy staging", "done": false },
+            { "item": "Pipeline de deploy production", "done": false }
+          ]
+        },
+        {
+          "id": "task-7.3",
+          "name": "Configurar Monitoramento",
+          "status": "pending",
+          "priority": "medium",
+          "checklist": [
+            { "item": "Configurar Prometheus", "done": false },
+            { "item": "Configurar Grafana dashboards", "done": false },
+            { "item": "Configurar alertas", "done": false },
+            { "item": "Configurar log aggregation", "done": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-8",
+      "name": "Homologação ANEEL",
+      "status": "pending",
+      "tasks": [
+        {
+          "id": "task-8.1",
+          "name": "Validação com equipe técnica",
+          "status": "pending",
+          "priority": "critical",
+          "checklist": [
+            { "item": "Validar dados com equipe do COD", "done": false },
+            { "item": "Validar códigos IBGE", "done": false },
+            { "item": "Validar classificação PROGRAMADA/NAO_PROGRAMADA", "done": false },
+            { "item": "Validar conjunto elétrico", "done": false }
+          ]
+        },
+        {
+          "id": "task-8.2",
+          "name": "Testes de performance",
+          "status": "pending",
+          "priority": "critical",
+          "checklist": [
+            { "item": "Tempo de resposta < 5 segundos", "done": false },
+            { "item": "Teste de carga (múltiplas requisições)", "done": false },
+            { "item": "Teste de stress", "done": false }
+          ]
+        },
+        {
+          "id": "task-8.3",
+          "name": "Documentação final",
+          "status": "pending",
+          "priority": "high",
+          "checklist": [
+            { "item": "Atualizar README", "done": false },
+            { "item": "Documentar API (Swagger)", "done": false },
+            { "item": "Runbook de operação", "done": false },
+            { "item": "Guia de troubleshooting", "done": false }
+          ]
+        }
+      ]
+    }
+  ],
+  "qualityGates": {
+    "codeReview": {
+      "required": true,
+      "minApprovers": 1
+    },
+    "testCoverage": {
+      "statements": 80,
+      "branches": 75,
+      "functions": 85,
+      "lines": 80
+    },
+    "security": {
+      "npmAudit": "no high/critical vulnerabilities",
+      "noSecretsInCode": true
+    },
+    "performance": {
+      "responseTime": "< 5000ms p95",
+      "errorRate": "< 0.1%"
+    }
+  },
+  "conventions": {
+    "git": {
+      "branchNaming": "feature/task-X.X-description",
+      "commitFormat": "type(scope): description",
+      "types": ["feat", "fix", "docs", "style", "refactor", "test", "chore"]
+    },
+    "code": {
+      "naming": {
+        "files": "kebab-case",
+        "classes": "PascalCase",
+        "functions": "camelCase",
+        "constants": "UPPER_SNAKE_CASE",
+        "interfaces": "PascalCase (sem prefixo I)"
+      },
+      "structure": {
+        "maxFileLines": 300,
+        "maxFunctionLines": 50,
+        "maxParameters": 4
+      }
+    },
+    "testing": {
+      "pattern": "AAA (Arrange, Act, Assert)",
+      "naming": "should [expected behavior] when [condition]",
+      "isolation": "Cada teste deve ser independente"
+    }
+  }
+}
