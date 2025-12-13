@@ -1,0 +1,28 @@
+{
+  "idcStatusRequisicao": 1,
+  "emailIndisponibilidade": "radar@roraimaenergia.com.br",
+  "mensagem": "",
+  "interrupcaoFornecimento": [
+    {
+      "ideConjuntoUnidadeConsumidora": 1,
+      "ideMunicipio": 1400050,
+      "qtdUCsAtendidas": 150000,
+      "qtdOcorrenciaProgramada": 500,
+      "qtdOcorrenciaNaoProgramada": 1200
+    },
+    {
+      "ideConjuntoUnidadeConsumidora": 1,
+      "ideMunicipio": 1400175,
+      "qtdUCsAtendidas": 12000,
+      "qtdOcorrenciaProgramada": 0,
+      "qtdOcorrenciaNaoProgramada": 350
+    },
+    {
+      "ideConjuntoUnidadeConsumidora": 2,
+      "ideMunicipio": 1400209,
+      "qtdUCsAtendidas": 8500,
+      "qtdOcorrenciaProgramada": 200,
+      "qtdOcorrenciaNaoProgramada": 0
+    }
+  ]
+}

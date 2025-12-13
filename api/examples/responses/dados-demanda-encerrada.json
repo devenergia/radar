@@ -1,0 +1,18 @@
+{
+  "idcStatusRequisicao": 1,
+  "mensagem": "",
+  "demanda": {
+    "numProtocolo": "98765432102025123456789012345",
+    "numUC": "987654321098765",
+    "numCPFCNPJ": "98765432000198",
+    "nomeTitularUC": "Empresa ABC Ltda",
+    "idcCanalAtendimento": 1,
+    "idcTipologia": "10201",
+    "idcStatus": 1,
+    "idcProcedencia": 1,
+    "dthAbertura": "01/06/2025 09:15",
+    "dthEncerramento": "05/06/2025 16:42",
+    "ideMunicipio": 1400175,
+    "idcNivelTratamento": 0
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "idcStatusRequisicao": 1,
+  "mensagem": "",
+  "demandasDiversas": [
+    {
+      "idcNivelAtendimento": 1,
+      "idcCanalAtendimento": 1,
+      "idcTipologia": "10101",
+      "qtdAndamentoNoMomento": 6,
+      "qtdRegistradaNoDia": 12,
+      "qtdImprocedenteNoDia": 1,
+      "qtdProcedenteNoDia": 2,
+      "qtdSemProcedenciaNoDia": 9
+    },
+    {
+      "idcNivelAtendimento": 1,
+      "idcCanalAtendimento": 2,
+      "idcTipologia": "10101",
+      "qtdAndamentoNoMomento": 15,
+      "qtdRegistradaNoDia": 45,
+      "qtdImprocedenteNoDia": 3,
+      "qtdProcedenteNoDia": 20,
+      "qtdSemProcedenciaNoDia": 12
+    },
+    {
+      "idcNivelAtendimento": 2,
+      "idcCanalAtendimento": 1,
+      "idcTipologia": "10102",
+      "qtdAndamentoNoMomento": 7,
+      "qtdRegistradaNoDia": 15,
+      "qtdImprocedenteNoDia": 3,
+      "qtdProcedenteNoDia": 0,
+      "qtdSemProcedenciaNoDia": 12
+    }
+  ]
+}

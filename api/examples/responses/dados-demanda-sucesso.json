@@ -1,0 +1,18 @@
+{
+  "idcStatusRequisicao": 1,
+  "mensagem": "",
+  "demanda": {
+    "numProtocolo": "02157896542021565898742569875",
+    "numUC": "123456789012345",
+    "numCPFCNPJ": "12345678901",
+    "nomeTitularUC": "Maria Silva Santos",
+    "idcCanalAtendimento": 2,
+    "idcTipologia": "10101",
+    "idcStatus": 0,
+    "idcProcedencia": 2,
+    "dthAbertura": "10/12/2025 14:30",
+    "dthEncerramento": null,
+    "ideMunicipio": 1400050,
+    "idcNivelTratamento": 0
+  }
+}

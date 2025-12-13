@@ -1,0 +1,513 @@
+openapi: 3.0.3
+info:
+  title: API RADAR - Roraima Energia
+  description: |
+    API REST para o projeto RADAR (Rede de Acompanhamento e Diagnóstico da Distribuição).
+
+    Esta API permite que a ANEEL consulte dados sobre:
+    - Interrupções de fornecimento de energia elétrica
+    - Demandas diversas (registradas, em tratamento e encerradas)
+    - Dados detalhados de uma demanda específica
+
+    **Base Legal:** Ofício Circular nº 14/2025-SFE/ANEEL (V4 - 23/10/2025)
+
+    ## Autenticação
+
+    Todas as requisições devem incluir a API Key no header `x-api-key`.
+
+    ## Segurança
+
+    - Protocolo HTTPS obrigatório
+    - Acesso restrito ao bloco de IP da ANEEL: `200.198.220.128/25`
+
+  version: 1.0.0
+  contact:
+    name: Suporte Técnico RADAR
+    email: ti.radar@roraimaenergia.com.br
+  license:
+    name: Uso Restrito - ANEEL
+
+servers:
+  - url: https://api.roraimaenergia.com.br/radar
+    description: Servidor de Produção
+  - url: https://api-homolog.roraimaenergia.com.br/radar
+    description: Servidor de Homologação
+
+security:
+  - ApiKeyAuth: []
+
+tags:
+  - name: Interrupções
+    description: Endpoints relacionados a interrupções de fornecimento
+  - name: Demandas
+    description: Endpoints relacionados a demandas de consumidores
+
+paths:
+  /quantitativointerrupcoesativas:
+    get:
+      tags:
+        - Interrupções
+      summary: Quantitativo de Interrupções Ativas
+      description: |
+        Retorna o quantitativo de unidades consumidoras com interrupção do fornecimento
+        de energia elétrica ativas no momento da consulta.
+
+        Os dados são agrupados por:
+        - Município (código IBGE)
+        - Conjunto Elétrico
+        - Tipo de Interrupção (programada / não programada)
+
+        **Frequência de consulta:** A cada 30 minutos
+        **Retenção ANEEL:** 36 meses
+      operationId: getInterrupcoesAtivas
+      parameters:
+        - name: dthRecuperacao
+          in: query
+          description: |
+            Data/hora para recuperação de dados históricos (formato: dd/mm/yyyy hh:mm).
+            Se não informado, retorna dados do momento atual.
+            **Disponível a partir de 01/04/2026.**
+          required: false
+          schema:
+            type: string
+            pattern: '^\d{2}/\d{2}/\d{4} \d{2}:\d{2}$'
+            example: "10/12/2025 14:30"
+      responses:
+        '200':
+          description: Requisição bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterrupcoesResponse'
+              examples:
+                sucesso:
+                  summary: Sucesso com dados
+                  value:
+                    idcStatusRequisicao: 1
+                    emailIndisponibilidade: "radar@roraimaenergia.com.br"
+                    mensagem: ""
+                    interrupcaoFornecimento:
+                      - ideConjuntoUnidadeConsumidora: 1
+                        ideMunicipio: 1400050
+                        qtdUCsAtendidas: 150000
+                        qtdOcorrenciaProgramada: 500
+                        qtdOcorrenciaNaoProgramada: 1200
+                semDados:
+                  summary: Sucesso sem interrupções ativas
+                  value:
+                    idcStatusRequisicao: 1
+                    emailIndisponibilidade: "radar@roraimaenergia.com.br"
+                    mensagem: ""
+                    interrupcaoFornecimento: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /quantitativodemandasdiversas:
+    get:
+      tags:
+        - Demandas
+      summary: Quantitativo de Demandas Diversas
+      description: |
+        Retorna o quantitativo acumulado de demandas diversas (em tratamento, registradas
+        e encerradas) do dia atual.
+
+        Os dados são agrupados por:
+        - Nível de Atendimento (1º nível / 2º nível)
+        - Canal de Atendimento
+        - Tipologia (conforme RH 2.992/2021)
+
+        **Frequência de consulta:** A cada 30 minutos (6h às 24h, seg-sex)
+        **Retenção ANEEL:** 36 meses (última consulta do dia)
+      operationId: getDemandasDiversas
+      responses:
+        '200':
+          description: Requisição bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemandasDiversasResponse'
+              examples:
+                sucesso:
+                  summary: Sucesso com dados
+                  value:
+                    idcStatusRequisicao: 1
+                    mensagem: ""
+                    demandasDiversas:
+                      - idcNivelAtendimento: 1
+                        idcCanalAtendimento: 2
+                        idcTipologia: "10101"
+                        qtdAndamentoNoMomento: 15
+                        qtdRegistradaNoDia: 50
+                        qtdImprocedenteNoDia: 5
+                        qtdProcedenteNoDia: 30
+                        qtdSemProcedenciaNoDia: 10
+                semDados:
+                  summary: Sucesso sem demandas
+                  value:
+                    idcStatusRequisicao: 1
+                    mensagem: ""
+                    demandasDiversas: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /dadosdemanda:
+    get:
+      tags:
+        - Demandas
+      summary: Dados Detalhados de Demanda
+      description: |
+        Retorna os dados detalhados de uma demanda específica, identificada pelo
+        número de protocolo.
+
+        **Disponibilidade de dados:**
+        - Demandas em andamento (qualquer data de abertura)
+        - Demandas encerradas há pelo menos 6 meses
+
+        **Horário de disponibilidade:** Segunda a sábado, 8h às 20h
+        **Consulta:** Sob demanda
+      operationId: getDadosDemanda
+      parameters:
+        - name: numProtocolo
+          in: query
+          description: Número do protocolo da demanda
+          required: true
+          schema:
+            type: string
+            maxLength: 30
+            example: "02157896542021565898742569875"
+      responses:
+        '200':
+          description: Requisição bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DadosDemandaResponse'
+              examples:
+                sucesso:
+                  summary: Demanda encontrada
+                  value:
+                    idcStatusRequisicao: 1
+                    mensagem: ""
+                    demanda:
+                      numProtocolo: "02157896542021565898742569875"
+                      numUC: "123456789012345"
+                      numCPFCNPJ: "12345678901"
+                      nomeTitularUC: "Maria Silva Santos"
+                      idcCanalAtendimento: 2
+                      idcTipologia: "10101"
+                      idcStatus: 0
+                      idcProcedencia: 2
+                      dthAbertura: "10/12/2025 14:30"
+                      dthEncerramento: null
+                      ideMunicipio: 1400050
+                      idcNivelTratamento: 0
+                naoEncontrado:
+                  summary: Protocolo não encontrado
+                  value:
+                    idcStatusRequisicao: 1
+                    mensagem: ""
+                    demanda: {}
+        '400':
+          description: Parâmetro inválido ou ausente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Chave de API fornecida pela Roraima Energia para uso exclusivo da ANEEL
+
+  schemas:
+    # ===== Interrupções =====
+    InterrupcoesResponse:
+      type: object
+      required:
+        - idcStatusRequisicao
+        - emailIndisponibilidade
+        - interrupcaoFornecimento
+      properties:
+        idcStatusRequisicao:
+          type: integer
+          enum: [1, 2]
+          description: "1 = Sucesso, 2 = Erro"
+          example: 1
+        emailIndisponibilidade:
+          type: string
+          maxLength: 50
+          description: Email para notificação de indisponibilidade
+          example: "radar@roraimaenergia.com.br"
+        mensagem:
+          type: string
+          description: Mensagem de erro (vazio se sucesso)
+          example: ""
+        interrupcaoFornecimento:
+          type: array
+          items:
+            $ref: '#/components/schemas/InterrupcaoFornecimento'
+
+    InterrupcaoFornecimento:
+      type: object
+      required:
+        - ideConjuntoUnidadeConsumidora
+        - ideMunicipio
+        - qtdUCsAtendidas
+        - qtdOcorrenciaProgramada
+        - qtdOcorrenciaNaoProgramada
+      properties:
+        ideConjuntoUnidadeConsumidora:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+          description: Código do Conjunto Elétrico
+          example: 1
+        ideMunicipio:
+          type: integer
+          minimum: 1
+          maximum: 9999999
+          description: Código IBGE do município (7 dígitos)
+          example: 1400050
+        qtdUCsAtendidas:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+          description: Total de UCs atendidas pelo conjunto no município
+          example: 150000
+        qtdOcorrenciaProgramada:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+          description: Quantidade de UCs com interrupção programada ativa
+          example: 500
+        qtdOcorrenciaNaoProgramada:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+          description: Quantidade de UCs com interrupção não programada ativa
+          example: 1200
+
+    # ===== Demandas Diversas =====
+    DemandasDiversasResponse:
+      type: object
+      required:
+        - idcStatusRequisicao
+        - demandasDiversas
+      properties:
+        idcStatusRequisicao:
+          type: integer
+          enum: [1, 2]
+          description: "1 = Sucesso, 2 = Erro"
+          example: 1
+        mensagem:
+          type: string
+          description: Mensagem de erro (vazio se sucesso)
+          example: ""
+        demandasDiversas:
+          type: array
+          items:
+            $ref: '#/components/schemas/DemandaDiversa'
+
+    DemandaDiversa:
+      type: object
+      required:
+        - idcNivelAtendimento
+        - idcCanalAtendimento
+        - idcTipologia
+        - qtdAndamentoNoMomento
+        - qtdRegistradaNoDia
+        - qtdImprocedenteNoDia
+        - qtdProcedenteNoDia
+        - qtdSemProcedenciaNoDia
+      properties:
+        idcNivelAtendimento:
+          type: integer
+          enum: [1, 2]
+          description: "1 = 1º Nível (CTA), 2 = 2º Nível (Ouvidoria)"
+          example: 1
+        idcCanalAtendimento:
+          type: integer
+          enum: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+          description: |
+            Canal de atendimento:
+            1=Presencial, 2=Telefônico, 3=Agência Virtual, 4=consumidor.gov,
+            5=Aplicativo, 6=E-mail, 7=SMS, 8=Redes Sociais, 9=Outros,
+            10=Chatbot, 11=Chat Humano, 12=WhatsApp
+          example: 2
+        idcTipologia:
+          type: string
+          maxLength: 7
+          description: Código da tipologia (RH 2.992/2021)
+          example: "10101"
+        qtdAndamentoNoMomento:
+          type: integer
+          minimum: 0
+          description: Demandas em tratamento no momento
+          example: 15
+        qtdRegistradaNoDia:
+          type: integer
+          minimum: 0
+          description: Novas demandas registradas no dia (acumulado)
+          example: 50
+        qtdImprocedenteNoDia:
+          type: integer
+          minimum: 0
+          description: Demandas encerradas como improcedentes no dia
+          example: 5
+        qtdProcedenteNoDia:
+          type: integer
+          minimum: 0
+          description: Demandas encerradas como procedentes no dia
+          example: 30
+        qtdSemProcedenciaNoDia:
+          type: integer
+          minimum: 0
+          description: Demandas encerradas sem procedência definida no dia
+          example: 10
+
+    # ===== Dados Demanda =====
+    DadosDemandaResponse:
+      type: object
+      required:
+        - idcStatusRequisicao
+        - demanda
+      properties:
+        idcStatusRequisicao:
+          type: integer
+          enum: [1, 2]
+          description: "1 = Sucesso, 2 = Erro"
+          example: 1
+        mensagem:
+          type: string
+          description: Mensagem de erro (vazio se sucesso)
+          example: ""
+        demanda:
+          $ref: '#/components/schemas/DemandaDetalhada'
+
+    DemandaDetalhada:
+      type: object
+      properties:
+        numProtocolo:
+          type: string
+          maxLength: 30
+          description: Número do protocolo da demanda
+          example: "02157896542021565898742569875"
+        numUC:
+          type: string
+          maxLength: 15
+          description: Número da Unidade Consumidora
+          example: "123456789012345"
+        numCPFCNPJ:
+          type: string
+          maxLength: 14
+          description: CPF/CNPJ do titular (sem formatação)
+          example: "12345678901"
+        nomeTitularUC:
+          type: string
+          maxLength: 50
+          description: Nome do titular da UC
+          example: "Maria Silva Santos"
+        idcCanalAtendimento:
+          type: integer
+          enum: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+          description: Canal de atendimento
+          example: 2
+        idcTipologia:
+          type: string
+          maxLength: 7
+          description: Código da tipologia (RH 2.992/2021)
+          example: "10101"
+        idcStatus:
+          type: integer
+          enum: [0, 1, 2]
+          description: "0 = Em andamento, 1 = Encerrada, 2 = Outros"
+          example: 0
+        idcProcedencia:
+          type: integer
+          enum: [0, 1, 2, 3]
+          description: "0 = Improcedente, 1 = Procedente, 2 = Em tratamento, 3 = Outros"
+          example: 2
+        dthAbertura:
+          type: string
+          pattern: '^\d{2}/\d{2}/\d{4} \d{2}:\d{2}$'
+          description: Data/hora de abertura (dd/MM/aaaa hh:mm)
+          example: "10/12/2025 14:30"
+        dthEncerramento:
+          type: string
+          nullable: true
+          pattern: '^\d{2}/\d{2}/\d{4} \d{2}:\d{2}$'
+          description: Data/hora de encerramento (dd/MM/aaaa hh:mm)
+          example: null
+        ideMunicipio:
+          type: integer
+          description: Código IBGE do município
+          example: 1400050
+        idcNivelTratamento:
+          type: integer
+          enum: [0, 1, 2]
+          description: "0 = Primeiro nível, 1 = Ouvidoria (segundo nível), 2 = Outros"
+          example: 0
+
+    # ===== Error =====
+    ErrorResponse:
+      type: object
+      required:
+        - idcStatusRequisicao
+        - mensagem
+      properties:
+        idcStatusRequisicao:
+          type: integer
+          enum: [2]
+          example: 2
+        mensagem:
+          type: string
+          description: Mensagem descritiva do erro
+          example: "Erro ao processar requisição"
+
+  responses:
+    Unauthorized:
+      description: API Key inválida ou ausente
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            idcStatusRequisicao: 2
+            mensagem: "API Key inválida ou ausente"
+
+    Forbidden:
+      description: IP não autorizado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            idcStatusRequisicao: 2
+            mensagem: "IP de origem não autorizado"
+
+    InternalError:
+      description: Erro interno do servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            idcStatusRequisicao: 2
+            mensagem: "Erro interno - Unable to connect to database instance!"

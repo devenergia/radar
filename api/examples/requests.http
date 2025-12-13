@@ -1,0 +1,71 @@
+### API RADAR - Roraima Energia
+### Exemplos de Requisições HTTP
+### Base Legal: Ofício Circular nº 14/2025-SFE/ANEEL
+
+@baseUrl = https://api.roraimaenergia.com.br/radar
+@apiKey = sua-api-key-aqui
+
+### ============================================
+### ENDPOINT 1: Quantitativo de Interrupções Ativas
+### ============================================
+
+### 1.1 Consulta de interrupções ativas (momento atual)
+GET {{baseUrl}}/quantitativointerrupcoesativas HTTP/1.1
+x-api-key: {{apiKey}}
+Content-Type: application/json
+
+### 1.2 Consulta de interrupções com data/hora específica (disponível a partir de 01/04/2026)
+GET {{baseUrl}}/quantitativointerrupcoesativas?dthRecuperacao=10/12/2025%2014:30 HTTP/1.1
+x-api-key: {{apiKey}}
+Content-Type: application/json
+
+### ============================================
+### ENDPOINT 2: Quantitativo de Demandas Diversas
+### ============================================
+
+### 2.1 Consulta de demandas diversas do dia
+GET {{baseUrl}}/quantitativodemandasdiversas HTTP/1.1
+x-api-key: {{apiKey}}
+Content-Type: application/json
+
+### ============================================
+### ENDPOINT 3: Dados Detalhados de Demanda
+### ============================================
+
+### 3.1 Consulta de demanda específica por protocolo
+GET {{baseUrl}}/dadosdemanda?numProtocolo=02157896542021565898742569875 HTTP/1.1
+x-api-key: {{apiKey}}
+Content-Type: application/json
+
+### 3.2 Consulta de demanda com protocolo numérico
+GET {{baseUrl}}/dadosdemanda?numProtocolo=123456789012345678901234567890 HTTP/1.1
+x-api-key: {{apiKey}}
+Content-Type: application/json
+
+### ============================================
+### TESTES DE ERRO
+### ============================================
+
+### Teste sem API Key (deve retornar 401)
+GET {{baseUrl}}/quantitativointerrupcoesativas HTTP/1.1
+Content-Type: application/json
+
+### Teste com API Key inválida (deve retornar 401)
+GET {{baseUrl}}/quantitativointerrupcoesativas HTTP/1.1
+x-api-key: chave-invalida-123
+Content-Type: application/json
+
+### Teste de endpoint inexistente (deve retornar 404)
+GET {{baseUrl}}/endpointinexistente HTTP/1.1
+x-api-key: {{apiKey}}
+Content-Type: application/json
+
+### Teste sem parâmetro obrigatório (deve retornar 400)
+GET {{baseUrl}}/dadosdemanda HTTP/1.1
+x-api-key: {{apiKey}}
+Content-Type: application/json
+
+### Teste com protocolo inexistente (deve retornar 200 com demanda vazia)
+GET {{baseUrl}}/dadosdemanda?numProtocolo=99999999999999999999999999999 HTTP/1.1
+x-api-key: {{apiKey}}
+Content-Type: application/json
