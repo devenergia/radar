@@ -19,6 +19,14 @@ Esta pasta contem a configuracao do Claude Code para garantir que os padroes de 
 │   ├── validate-architecture.md
 │   ├── run-tests.md
 │   └── commit.md
+├── agents/                # Subagents especializados
+│   ├── architecture-validator.md  # Valida Clean Architecture
+│   ├── tdd-enforcer.md           # Garante TDD
+│   ├── ddd-expert.md             # Especialista DDD
+│   ├── code-reviewer.md          # Code review completo
+│   ├── test-runner.md            # Executa e analisa testes
+│   ├── python-expert.md          # Python/FastAPI expert
+│   └── security-checker.md       # Verifica vulnerabilidades
 ├── skills/                # Agent Skills (model-invoked)
 │   ├── radar-entity/      # Criacao de Entities DDD
 │   ├── radar-value-object/# Criacao de Value Objects
@@ -40,6 +48,30 @@ Esta pasta contem a configuracao do Claude Code para garantir que os padroes de 
     ├── inject_context.py
     └── session_start.py
 ```
+
+## Subagents Especializados
+
+Subagents sao agentes especializados que o Claude pode invocar para tarefas complexas. Cada um tem ferramentas e conhecimento especifico.
+
+| Subagent | Funcao | Ferramentas |
+|----------|--------|-------------|
+| `architecture-validator` | Valida Clean Architecture | Read, Grep, Glob |
+| `tdd-enforcer` | Garante ciclo TDD | Read, Write, Edit, Glob, Grep |
+| `ddd-expert` | Modelagem DDD | Read, Write, Edit, Glob, Grep |
+| `code-reviewer` | Review completo | Read, Grep, Glob |
+| `test-runner` | Executa testes | Bash, Read, Grep, Glob |
+| `python-expert` | Python/FastAPI | Read, Write, Edit, Glob, Grep |
+| `security-checker` | Seguranca | Read, Grep, Glob |
+
+### Quando Sao Ativados
+
+- **architecture-validator**: Apos escrever codigo em backend/
+- **tdd-enforcer**: Antes de implementar codigo de producao
+- **ddd-expert**: Ao criar Entities, VOs, Aggregates
+- **code-reviewer**: Antes de commits
+- **test-runner**: Ao executar ou analisar testes
+- **python-expert**: Para orientacao Python/FastAPI
+- **security-checker**: Ao criar endpoints ou queries
 
 ## Agent Skills (Ativacao Automatica)
 
