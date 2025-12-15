@@ -8,7 +8,7 @@ Esta pasta contem a configuracao do Claude Code para garantir que os padroes de 
 .claude/
 ├── README.md              # Este arquivo
 ├── settings.json          # Configuracao de hooks
-├── commands/              # Slash commands personalizados
+├── commands/              # Slash commands (user-invoked)
 │   ├── create-entity.md
 │   ├── create-value-object.md
 │   ├── create-usecase.md
@@ -19,6 +19,14 @@ Esta pasta contem a configuracao do Claude Code para garantir que os padroes de 
 │   ├── validate-architecture.md
 │   ├── run-tests.md
 │   └── commit.md
+├── skills/                # Agent Skills (model-invoked)
+│   ├── radar-entity/      # Criacao de Entities DDD
+│   ├── radar-value-object/# Criacao de Value Objects
+│   ├── radar-usecase/     # Criacao de Use Cases
+│   ├── radar-repository/  # Criacao de Repositories
+│   ├── radar-test/        # Criacao de Testes TDD
+│   ├── radar-endpoint/    # Criacao de Endpoints FastAPI
+│   └── radar-review/      # Code Review contra padroes
 ├── rules/                 # Regras modulares por contexto
 │   ├── clean-architecture.md
 │   ├── solid-principles.md
@@ -33,7 +41,29 @@ Esta pasta contem a configuracao do Claude Code para garantir que os padroes de 
     └── session_start.py
 ```
 
-## Slash Commands Disponiveis
+## Agent Skills (Ativacao Automatica)
+
+Skills sao capacidades que o Claude ativa **automaticamente** baseado no contexto da conversa.
+
+| Skill | Ativada Quando |
+|-------|----------------|
+| `radar-entity` | Pede para criar entidade, entity, ou conceito com identidade |
+| `radar-value-object` | Pede para criar value object, VO, codigo, tipo |
+| `radar-usecase` | Pede para criar use case, caso de uso, funcionalidade |
+| `radar-repository` | Pede para criar repositorio, acesso a dados, queries |
+| `radar-test` | Pede para criar testes, TDD, pytest, cobertura |
+| `radar-endpoint` | Pede para criar endpoint, rota, API REST |
+| `radar-review` | Pede para revisar codigo, code review, validar |
+
+### Diferenca entre Skills e Commands
+
+| Aspecto | Skills | Commands |
+|---------|--------|----------|
+| Ativacao | Automatica (modelo decide) | Manual (usuario digita `/`) |
+| Complexidade | Capacidades completas | Prompts simples |
+| Descoberta | Por contexto | Por comando explicito |
+
+## Slash Commands (Invocacao Manual)
 
 | Comando | Descricao |
 |---------|-----------|
@@ -139,6 +169,7 @@ Use os comandos de criacao para garantir estrutura correta:
 
 ## Referencias
 
+- [Claude Code Docs - Skills](https://code.claude.com/docs/en/skills)
 - [Claude Code Docs - Hooks](https://code.claude.com/docs/en/hooks)
 - [Claude Code Docs - Commands](https://code.claude.com/docs/en/slash-commands)
 - [Claude Code Docs - Memory](https://code.claude.com/docs/en/memory)
