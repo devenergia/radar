@@ -47,28 +47,31 @@ flowchart TB
 
 ### Uso no Codigo
 
-```typescript
-// BOM: Usa linguagem do dominio
-class Interrupcao {
-  isProgramada(): boolean {
-    return this.tipo.equals(TipoInterrupcao.PROGRAMADA);
-  }
+```python
+# BOM: Usa linguagem do dominio
+@dataclass(frozen=True)
+class Interrupcao:
+    id: int
+    tipo: TipoInterrupcao
+    municipio: CodigoIBGE
+    ucs_afetadas: int
 
-  getUcsAfetadas(): number {
-    return this.ucsAfetadas;
-  }
-}
+    def is_programada(self) -> bool:
+        return self.tipo == TipoInterrupcao.PROGRAMADA
 
-// RUIM: Termos tecnicos sem significado de negocio
-class Event {
-  hasSchedule(): boolean {
-    return this.planId !== null;
-  }
+    def get_ucs_afetadas(self) -> int:
+        return self.ucs_afetadas
 
-  getCustomerCount(): number {
-    return this.numCust;
-  }
-}
+
+# RUIM: Termos tecnicos sem significado de negocio
+@dataclass
+class Event:
+    id: int
+    plan_id: int | None
+    num_cust: int
+
+    def has_schedule(self) -> bool:
+        return self.plan_id is not None
 ```
 
 ---
@@ -106,90 +109,77 @@ flowchart TB
     style UniversoContext fill:#c8e6c9
 ```
 
-### Mapeamento de Contextos (Context Map)
-
-```mermaid
-flowchart LR
-    subgraph Upstream["Sistemas Upstream"]
-        INSERVICE[INSERVICE<br/>OMS]
-        INDICADORES[Indicadores]
-    end
-
-    subgraph RADAR["RADAR API"]
-        INT_CTX[Interrupcoes]
-        DEM_CTX[Demandas]
-    end
-
-    subgraph Downstream["Sistemas Downstream"]
-        ANEEL[ANEEL<br/>Consumidor]
-    end
-
-    INSERVICE -->|Conformist| INT_CTX
-    INDICADORES -->|Conformist| INT_CTX
-    INT_CTX -->|Published Language| ANEEL
-    DEM_CTX -->|Published Language| ANEEL
-
-    style Upstream fill:#fce4ec
-    style RADAR fill:#e3f2fd
-    style Downstream fill:#c8e6c9
-```
-
 ---
 
 ## Entidades (Entities)
 
 Entidades possuem identidade unica e ciclo de vida.
 
-```typescript
-// domain/entities/interrupcao.entity.ts
-export class Interrupcao {
-  private constructor(
-    private readonly _id: number,
-    private readonly _tipo: TipoInterrupcao,
-    private readonly _municipio: CodigoIBGE,
-    private readonly _conjunto: number,
-    private readonly _ucsAfetadas: number,
-    private readonly _dataInicio: Date,
-    private readonly _dataFim: Date | null
-  ) {}
+```python
+# shared/domain/entities/interrupcao.py
+from dataclasses import dataclass
+from datetime import datetime
+from ..value_objects.codigo_ibge import CodigoIBGE
+from ..value_objects.tipo_interrupcao import TipoInterrupcao
+from ..result import Result
 
-  // Factory method
-  static create(props: InterrupcaoProps): Result<Interrupcao> {
-    // Validacoes de invariantes
-    if (props.ucsAfetadas < 0) {
-      return Result.fail('UCs afetadas nao pode ser negativo');
-    }
 
-    return Result.ok(new Interrupcao(
-      props.id,
-      props.tipo,
-      props.municipio,
-      props.conjunto,
-      props.ucsAfetadas,
-      props.dataInicio,
-      props.dataFim ?? null
-    ));
-  }
+@dataclass
+class Interrupcao:
+    """Entidade que representa uma interrupcao de fornecimento."""
 
-  // Identidade
-  get id(): number {
-    return this._id;
-  }
+    _id: int
+    _tipo: TipoInterrupcao
+    _municipio: CodigoIBGE
+    _conjunto: int
+    _ucs_afetadas: int
+    _data_inicio: datetime
+    _data_fim: datetime | None
 
-  // Comportamento de negocio
-  isAtiva(): boolean {
-    return this._dataFim === null;
-  }
+    @classmethod
+    def create(cls, props: dict) -> "Result[Interrupcao]":
+        """Factory method com validacao de invariantes."""
+        if props.get("ucs_afetadas", 0) < 0:
+            return Result.fail("UCs afetadas nao pode ser negativo")
 
-  isProgramada(): boolean {
-    return this._tipo.equals(TipoInterrupcao.PROGRAMADA);
-  }
+        return Result.ok(cls(
+            _id=props["id"],
+            _tipo=props["tipo"],
+            _municipio=props["municipio"],
+            _conjunto=props["conjunto"],
+            _ucs_afetadas=props["ucs_afetadas"],
+            _data_inicio=props["data_inicio"],
+            _data_fim=props.get("data_fim"),
+        ))
 
-  // Igualdade baseada em identidade
-  equals(other: Interrupcao): boolean {
-    return this._id === other._id;
-  }
-}
+    @property
+    def id(self) -> int:
+        return self._id
+
+    @property
+    def municipio(self) -> CodigoIBGE:
+        return self._municipio
+
+    @property
+    def ucs_afetadas(self) -> int:
+        return self._ucs_afetadas
+
+    def is_ativa(self) -> bool:
+        """Interrupcao ativa quando nao tem data de fim."""
+        return self._data_fim is None
+
+    def is_programada(self) -> bool:
+        """Interrupcao programada quando tem PLAN_ID associado."""
+        return self._tipo == TipoInterrupcao.PROGRAMADA
+
+    def __eq__(self, other: object) -> bool:
+        """Igualdade baseada em identidade."""
+        if not isinstance(other, Interrupcao):
+            return False
+        return self._id == other._id
+
+    def __hash__(self) -> int:
+        return hash(self._id)
 ```
 
 ---
@@ -198,97 +188,80 @@ export class Interrupcao {
 
 Value Objects sao imutaveis e comparados por valor, nao por identidade.
 
-```typescript
-// domain/value-objects/codigo-ibge.vo.ts
-export class CodigoIBGE {
-  private static readonly MUNICIPIOS_RORAIMA = [
-    1400050, // Alto Alegre
-    1400027, // Amajari
-    1400100, // Boa Vista
-    1400159, // Bonfim
-    1400175, // Canta
-    1400209, // Caracarai
-    1400233, // Caroebe
-    1400282, // Iracema
-    1400308, // Mucajai
-    1400407, // Normandia
-    1400456, // Pacaraima
-    1400472, // Rorainopolis
-    1400506, // Sao Joao da Baliza
-    1400605, // Sao Luiz
-    1400704  // Uiramuta
-  ];
+```python
+# shared/domain/value_objects/codigo_ibge.py
+from dataclasses import dataclass
+from ..result import Result
 
-  private constructor(private readonly _valor: number) {}
 
-  // Factory method com validacao
-  static create(codigo: number): Result<CodigoIBGE> {
-    if (!this.isValid(codigo)) {
-      return Result.fail(`Codigo IBGE invalido: ${codigo}`);
-    }
+@dataclass(frozen=True)
+class CodigoIBGE:
+    """Value Object para codigo IBGE de municipio."""
 
-    if (!this.isRoraima(codigo)) {
-      return Result.fail(`Codigo IBGE nao pertence a Roraima: ${codigo}`);
-    }
+    valor: str
 
-    return Result.ok(new CodigoIBGE(codigo));
-  }
+    # Municipios de Roraima
+    MUNICIPIOS_RORAIMA = frozenset([
+        "1400050",  # Alto Alegre
+        "1400027",  # Amajari
+        "1400100",  # Boa Vista
+        "1400159",  # Bonfim
+        "1400175",  # Canta
+        "1400209",  # Caracarai
+        "1400233",  # Caroebe
+        "1400282",  # Iracema
+        "1400308",  # Mucajai
+        "1400407",  # Normandia
+        "1400456",  # Pacaraima
+        "1400472",  # Rorainopolis
+        "1400506",  # Sao Joao da Baliza
+        "1400605",  # Sao Luiz
+        "1400704",  # Uiramuta
+    ])
 
-  private static isValid(codigo: number): boolean {
-    return codigo >= 1000000 && codigo <= 9999999;
-  }
+    def __post_init__(self) -> None:
+        """Validacao no momento da criacao."""
+        if not self._is_valid():
+            raise ValueError(f"Codigo IBGE invalido: {self.valor}")
+        if not self._is_roraima():
+            raise ValueError(f"Codigo IBGE nao pertence a Roraima: {self.valor}")
 
-  private static isRoraima(codigo: number): boolean {
-    return this.MUNICIPIOS_RORAIMA.includes(codigo);
-  }
+    def _is_valid(self) -> bool:
+        return self.valor.isdigit() and len(self.valor) == 7
 
-  get valor(): number {
-    return this._valor;
-  }
+    def _is_roraima(self) -> bool:
+        return self.valor in self.MUNICIPIOS_RORAIMA
 
-  // Igualdade por valor
-  equals(other: CodigoIBGE): boolean {
-    return this._valor === other._valor;
-  }
+    @classmethod
+    def create(cls, codigo: str | int) -> "Result[CodigoIBGE]":
+        """Factory method com validacao."""
+        try:
+            valor = str(codigo).zfill(7)
+            return Result.ok(cls(valor=valor))
+        except ValueError as e:
+            return Result.fail(str(e))
 
-  toString(): string {
-    return this._valor.toString();
-  }
-}
 
-// domain/value-objects/tipo-interrupcao.vo.ts
-export class TipoInterrupcao {
-  static readonly PROGRAMADA = new TipoInterrupcao('PROGRAMADA', 1);
-  static readonly NAO_PROGRAMADA = new TipoInterrupcao('NAO_PROGRAMADA', 2);
+# shared/domain/value_objects/tipo_interrupcao.py
+from enum import Enum
 
-  private constructor(
-    private readonly _valor: string,
-    private readonly _codigo: number
-  ) {}
 
-  // Factory baseado em regra de negocio
-  static fromPlanId(planId: number | null): TipoInterrupcao {
-    return planId !== null
-      ? TipoInterrupcao.PROGRAMADA
-      : TipoInterrupcao.NAO_PROGRAMADA;
-  }
+class TipoInterrupcao(Enum):
+    """Value Object para tipo de interrupcao."""
 
-  get valor(): string {
-    return this._valor;
-  }
+    PROGRAMADA = "PROGRAMADA"
+    NAO_PROGRAMADA = "NAO_PROGRAMADA"
 
-  get codigo(): number {
-    return this._codigo;
-  }
+    @classmethod
+    def from_plan_id(cls, plan_id: int | None) -> "TipoInterrupcao":
+        """
+        Determina tipo baseado na existencia de PLAN_ID.
+        Regra: Se existe PLAN_ID, e programada.
+        """
+        return cls.PROGRAMADA if plan_id is not None else cls.NAO_PROGRAMADA
 
-  isProgramada(): boolean {
-    return this === TipoInterrupcao.PROGRAMADA;
-  }
-
-  equals(other: TipoInterrupcao): boolean {
-    return this._valor === other._valor;
-  }
-}
+    def is_programada(self) -> bool:
+        return self == TipoInterrupcao.PROGRAMADA
 ```
 
 ---
@@ -297,43 +270,47 @@ export class TipoInterrupcao {
 
 Aggregates sao clusters de entidades tratados como uma unidade.
 
-```typescript
-// domain/aggregates/interrupcao-agregada.ts
-export class InterrupcaoAgregada {
-  private constructor(
-    private readonly _idConjunto: number,
-    private readonly _municipio: CodigoIBGE,
-    private readonly _qtdUcsAtendidas: number,
-    private readonly _qtdProgramada: number,
-    private readonly _qtdNaoProgramada: number
-  ) {}
+```python
+# shared/domain/aggregates/interrupcao_agregada.py
+from dataclasses import dataclass
+from ..value_objects.codigo_ibge import CodigoIBGE
 
-  static create(props: InterrupcaoAgregadaProps): InterrupcaoAgregada {
-    return new InterrupcaoAgregada(
-      props.idConjunto,
-      props.municipio,
-      props.qtdUcsAtendidas,
-      props.qtdProgramada,
-      props.qtdNaoProgramada
-    );
-  }
 
-  // Aggregate Root controla acesso
-  get idConjunto(): number { return this._idConjunto; }
-  get municipio(): CodigoIBGE { return this._municipio; }
-  get qtdUcsAtendidas(): number { return this._qtdUcsAtendidas; }
-  get qtdProgramada(): number { return this._qtdProgramada; }
-  get qtdNaoProgramada(): number { return this._qtdNaoProgramada; }
+@dataclass(frozen=True)
+class InterrupcaoAgregada:
+    """Aggregate que representa interrupcoes agregadas por municipio/conjunto."""
 
-  // Comportamento de negocio
-  get totalInterrupcoes(): number {
-    return this._qtdProgramada + this._qtdNaoProgramada;
-  }
+    id_conjunto: int
+    municipio: CodigoIBGE
+    qtd_ucs_atendidas: int
+    qtd_programada: int
+    qtd_nao_programada: int
 
-  hasInterrupcoes(): boolean {
-    return this.totalInterrupcoes > 0;
-  }
-}
+    @classmethod
+    def create(
+        cls,
+        id_conjunto: int,
+        municipio: CodigoIBGE,
+        qtd_ucs_atendidas: int,
+        qtd_programada: int,
+        qtd_nao_programada: int,
+    ) -> "InterrupcaoAgregada":
+        return cls(
+            id_conjunto=id_conjunto,
+            municipio=municipio,
+            qtd_ucs_atendidas=qtd_ucs_atendidas,
+            qtd_programada=qtd_programada,
+            qtd_nao_programada=qtd_nao_programada,
+        )
+
+    @property
+    def total_interrupcoes(self) -> int:
+        """Total de interrupcoes (programadas + nao programadas)."""
+        return self.qtd_programada + self.qtd_nao_programada
+
+    def has_interrupcoes(self) -> bool:
+        """Verifica se ha interrupcoes neste agregado."""
+        return self.total_interrupcoes > 0
 ```
 
 ---
@@ -342,53 +319,50 @@ export class InterrupcaoAgregada {
 
 Servicos de dominio encapsulam logica que nao pertence a uma entidade especifica.
 
-```typescript
-// domain/services/interrupcao-aggregator.service.ts
-export class InterrupcaoAggregatorService {
-  /**
-   * Agrega interrupcoes por municipio e conjunto
-   * Regra de negocio: Dados devem ser agregados por Municipio + Conjunto + Tipo
-   */
-  agregar(interrupcoes: Interrupcao[]): InterrupcaoAgregada[] {
-    const agrupadas = new Map<string, {
-      municipio: CodigoIBGE;
-      conjunto: number;
-      programada: number;
-      naoProgramada: number;
-    }>();
+```python
+# shared/domain/services/interrupcao_aggregator.py
+from collections import defaultdict
+from ..entities.interrupcao import Interrupcao
+from ..aggregates.interrupcao_agregada import InterrupcaoAgregada
 
-    for (const interrupcao of interrupcoes) {
-      const chave = `${interrupcao.municipio.valor}-${interrupcao.conjunto}`;
 
-      if (!agrupadas.has(chave)) {
-        agrupadas.set(chave, {
-          municipio: interrupcao.municipio,
-          conjunto: interrupcao.conjunto,
-          programada: 0,
-          naoProgramada: 0
-        });
-      }
+class InterrupcaoAggregatorService:
+    """
+    Servico de dominio para agregacao de interrupcoes.
+    Regra: Dados devem ser agregados por Municipio + Conjunto + Tipo.
+    """
 
-      const grupo = agrupadas.get(chave)!;
+    def agregar(self, interrupcoes: list[Interrupcao]) -> list[InterrupcaoAgregada]:
+        """Agrega interrupcoes por municipio e conjunto."""
+        agrupadas: dict[str, dict] = defaultdict(lambda: {
+            "municipio": None,
+            "conjunto": 0,
+            "programada": 0,
+            "nao_programada": 0,
+        })
 
-      if (interrupcao.isProgramada()) {
-        grupo.programada += interrupcao.ucsAfetadas;
-      } else {
-        grupo.naoProgramada += interrupcao.ucsAfetadas;
-      }
-    }
+        for interrupcao in interrupcoes:
+            chave = f"{interrupcao.municipio.valor}-{interrupcao._conjunto}"
 
-    return Array.from(agrupadas.values()).map(grupo =>
-      InterrupcaoAgregada.create({
-        idConjunto: grupo.conjunto,
-        municipio: grupo.municipio,
-        qtdUcsAtendidas: 0, // Sera preenchido por outra fonte
-        qtdProgramada: grupo.programada,
-        qtdNaoProgramada: grupo.naoProgramada
-      })
-    );
-  }
-}
+            if agrupadas[chave]["municipio"] is None:
+                agrupadas[chave]["municipio"] = interrupcao.municipio
+                agrupadas[chave]["conjunto"] = interrupcao._conjunto
+
+            if interrupcao.is_programada():
+                agrupadas[chave]["programada"] += interrupcao.ucs_afetadas
+            else:
+                agrupadas[chave]["nao_programada"] += interrupcao.ucs_afetadas
+
+        return [
+            InterrupcaoAgregada.create(
+                id_conjunto=grupo["conjunto"],
+                municipio=grupo["municipio"],
+                qtd_ucs_atendidas=0,  # Preenchido por outra fonte
+                qtd_programada=grupo["programada"],
+                qtd_nao_programada=grupo["nao_programada"],
+            )
+            for grupo in agrupadas.values()
+        ]
 ```
 
 ---
@@ -397,42 +371,50 @@ export class InterrupcaoAggregatorService {
 
 Repositories abstraem o acesso a dados, mantendo o dominio puro.
 
-```typescript
-// domain/repositories/interrupcao.repository.ts
-export interface InterrupcaoRepository {
-  /**
-   * Busca todas as interrupcoes ativas (is_open = 'T')
-   */
-  findAtivas(): Promise<Interrupcao[]>;
+```python
+# shared/domain/repositories/interrupcao_repository.py
+from typing import Protocol
+from ..entities.interrupcao import Interrupcao
+from ..value_objects.codigo_ibge import CodigoIBGE
 
-  /**
-   * Busca interrupcoes por municipio
-   */
-  findByMunicipio(ibge: CodigoIBGE): Promise<Interrupcao[]>;
 
-  /**
-   * Busca historico de interrupcoes em um periodo
-   */
-  findHistorico(params: HistoricoParams): Promise<Interrupcao[]>;
-}
+class InterrupcaoRepository(Protocol):
+    """Port para repositorio de interrupcoes."""
 
-// domain/repositories/universo.repository.ts
-export interface UniversoRepository {
-  /**
-   * Retorna o codigo IBGE do municipio associado ao dispositivo
-   */
-  findMunicipioByDispositivo(devId: number): Promise<CodigoIBGE | null>;
+    async def buscar_ativas(self) -> list[Interrupcao]:
+        """Busca todas as interrupcoes ativas (is_open = 'T')."""
+        ...
 
-  /**
-   * Retorna o conjunto eletrico associado ao dispositivo
-   */
-  findConjuntoByDispositivo(devId: number): Promise<number | null>;
+    async def buscar_por_municipio(self, ibge: CodigoIBGE) -> list[Interrupcao]:
+        """Busca interrupcoes por municipio."""
+        ...
 
-  /**
-   * Lista todos os municipios de Roraima
-   */
-  findAllMunicipios(): Promise<Municipio[]>;
-}
+    async def buscar_historico(
+        self,
+        data_inicio: str,
+        data_fim: str,
+    ) -> list[Interrupcao]:
+        """Busca historico de interrupcoes em um periodo."""
+        ...
+
+
+# shared/domain/repositories/universo_repository.py
+class UniversoRepository(Protocol):
+    """Port para repositorio de universo (dados geograficos)."""
+
+    async def buscar_municipio_por_dispositivo(
+        self,
+        dev_id: int,
+    ) -> CodigoIBGE | None:
+        """Retorna o codigo IBGE do municipio associado ao dispositivo."""
+        ...
+
+    async def buscar_conjunto_por_dispositivo(
+        self,
+        dev_id: int,
+    ) -> int | None:
+        """Retorna o conjunto eletrico associado ao dispositivo."""
+        ...
 ```
 
 ---
@@ -443,58 +425,53 @@ export interface UniversoRepository {
 classDiagram
     class Interrupcao {
         <<Entity>>
-        -number id
+        -int id
         -TipoInterrupcao tipo
         -CodigoIBGE municipio
-        -number conjunto
-        -number ucsAfetadas
-        -Date dataInicio
-        -Date? dataFim
-        +isAtiva() boolean
-        +isProgramada() boolean
-        +equals(other) boolean
+        -int conjunto
+        -int ucs_afetadas
+        -datetime data_inicio
+        -datetime? data_fim
+        +is_ativa() bool
+        +is_programada() bool
+        +__eq__(other) bool
     }
 
     class InterrupcaoAgregada {
         <<Aggregate>>
-        -number idConjunto
+        -int id_conjunto
         -CodigoIBGE municipio
-        -number qtdUcsAtendidas
-        -number qtdProgramada
-        -number qtdNaoProgramada
-        +totalInterrupcoes() number
-        +hasInterrupcoes() boolean
+        -int qtd_ucs_atendidas
+        -int qtd_programada
+        -int qtd_nao_programada
+        +total_interrupcoes() int
+        +has_interrupcoes() bool
     }
 
     class CodigoIBGE {
         <<Value Object>>
-        -number valor
-        +static create(codigo) Result
-        +equals(other) boolean
-        +toString() string
+        -str valor
+        +create(codigo) Result
+        +__eq__(other) bool
     }
 
     class TipoInterrupcao {
-        <<Value Object>>
-        -string valor
-        -number codigo
-        +static PROGRAMADA
-        +static NAO_PROGRAMADA
-        +static fromPlanId(planId) TipoInterrupcao
-        +isProgramada() boolean
-        +equals(other) boolean
+        <<Value Object / Enum>>
+        +PROGRAMADA
+        +NAO_PROGRAMADA
+        +from_plan_id(plan_id) TipoInterrupcao
+        +is_programada() bool
     }
 
     class InterrupcaoRepository {
-        <<Repository Interface>>
-        +findAtivas() Promise
-        +findByMunicipio(ibge) Promise
-        +findHistorico(params) Promise
+        <<Protocol>>
+        +buscar_ativas() list[Interrupcao]
+        +buscar_por_municipio(ibge) list[Interrupcao]
     }
 
     class InterrupcaoAggregatorService {
         <<Domain Service>>
-        +agregar(interrupcoes) InterrupcaoAgregada[]
+        +agregar(interrupcoes) list[InterrupcaoAgregada]
     }
 
     Interrupcao --> CodigoIBGE
@@ -519,9 +496,9 @@ classDiagram
 - [ ] Encapsulam comportamento de negocio
 
 ### Value Objects
-- [ ] Sao imutaveis
+- [ ] Sao imutaveis (frozen=True)
 - [ ] Igualdade comparada por valor
-- [ ] Validacao no factory method
+- [ ] Validacao no __post_init__ ou factory method
 
 ### Aggregates
 - [ ] Definem limites de consistencia
@@ -529,6 +506,6 @@ classDiagram
 - [ ] Transacoes respeitam limites
 
 ### Repositories
-- [ ] Interface no dominio
+- [ ] Protocol no dominio
 - [ ] Implementacao na infraestrutura
 - [ ] Retornam entidades de dominio

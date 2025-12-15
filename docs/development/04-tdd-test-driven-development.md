@@ -19,142 +19,126 @@ flowchart LR
 
 ### 1. RED - Escrever o Teste Primeiro
 
-```typescript
-// tests/unit/domain/value-objects/codigo-ibge.spec.ts
-import { describe, it, expect } from 'vitest';
-import { CodigoIBGE } from '@/domain/value-objects/codigo-ibge.vo';
+```python
+# tests/unit/domain/value_objects/test_codigo_ibge.py
+import pytest
+from shared.domain.value_objects.codigo_ibge import CodigoIBGE
 
-describe('CodigoIBGE', () => {
-  describe('create', () => {
-    it('deve criar codigo IBGE valido para Boa Vista', () => {
-      // Arrange
-      const codigoBv = 1400100;
 
-      // Act
-      const result = CodigoIBGE.create(codigoBv);
+class TestCodigoIBGE:
+    """Testes para Value Object CodigoIBGE."""
 
-      // Assert
-      expect(result.isSuccess).toBe(true);
-      expect(result.getValue().valor).toBe(1400100);
-    });
+    class TestCreate:
+        def test_deve_criar_codigo_ibge_valido_para_boa_vista(self):
+            # Arrange
+            codigo_bv = "1400100"
 
-    it('deve rejeitar codigo IBGE com menos de 7 digitos', () => {
-      // Arrange
-      const codigoInvalido = 140010; // 6 digitos
+            # Act
+            result = CodigoIBGE.create(codigo_bv)
 
-      // Act
-      const result = CodigoIBGE.create(codigoInvalido);
+            # Assert
+            assert result.is_success
+            assert result.value.valor == "1400100"
 
-      // Assert
-      expect(result.isFailure).toBe(true);
-      expect(result.getError()).toContain('invalido');
-    });
+        def test_deve_rejeitar_codigo_ibge_com_menos_de_7_digitos(self):
+            # Arrange
+            codigo_invalido = "140010"  # 6 digitos
 
-    it('deve rejeitar codigo IBGE de outro estado', () => {
-      // Arrange
-      const codigoSP = 3550308; // Sao Paulo
+            # Act
+            result = CodigoIBGE.create(codigo_invalido)
 
-      // Act
-      const result = CodigoIBGE.create(codigoSP);
+            # Assert
+            assert result.is_failure
+            assert "invalido" in result.error.lower()
 
-      // Assert
-      expect(result.isFailure).toBe(true);
-      expect(result.getError()).toContain('Roraima');
-    });
-  });
+        def test_deve_rejeitar_codigo_ibge_de_outro_estado(self):
+            # Arrange
+            codigo_sp = "3550308"  # Sao Paulo
 
-  describe('equals', () => {
-    it('deve ser igual quando valores sao iguais', () => {
-      const ibge1 = CodigoIBGE.create(1400100).getValue();
-      const ibge2 = CodigoIBGE.create(1400100).getValue();
+            # Act
+            result = CodigoIBGE.create(codigo_sp)
 
-      expect(ibge1.equals(ibge2)).toBe(true);
-    });
-  });
-});
+            # Assert
+            assert result.is_failure
+            assert "Roraima" in result.error
+
+    class TestEquals:
+        def test_deve_ser_igual_quando_valores_sao_iguais(self):
+            ibge1 = CodigoIBGE.create("1400100").value
+            ibge2 = CodigoIBGE.create("1400100").value
+
+            assert ibge1 == ibge2
 ```
 
 **Neste ponto, o teste FALHA porque `CodigoIBGE` nao existe.**
 
 ### 2. GREEN - Implementar o Minimo Necessario
 
-```typescript
-// domain/value-objects/codigo-ibge.vo.ts
-import { Result } from '@/shared/result';
+```python
+# shared/domain/value_objects/codigo_ibge.py
+from dataclasses import dataclass
+from ..result import Result
 
-export class CodigoIBGE {
-  private static readonly MUNICIPIOS_RORAIMA = [
-    1400050, 1400027, 1400100, 1400159, 1400175,
-    1400209, 1400233, 1400282, 1400308, 1400407,
-    1400456, 1400472, 1400506, 1400605, 1400704
-  ];
 
-  private constructor(private readonly _valor: number) {}
+@dataclass(frozen=True)
+class CodigoIBGE:
+    valor: str
 
-  static create(codigo: number): Result<CodigoIBGE> {
-    if (codigo < 1000000 || codigo > 9999999) {
-      return Result.fail(`Codigo IBGE invalido: ${codigo}`);
-    }
+    MUNICIPIOS_RORAIMA = frozenset([
+        "1400050", "1400027", "1400100", "1400159", "1400175",
+        "1400209", "1400233", "1400282", "1400308", "1400407",
+        "1400456", "1400472", "1400506", "1400605", "1400704"
+    ])
 
-    if (!this.MUNICIPIOS_RORAIMA.includes(codigo)) {
-      return Result.fail(`Codigo IBGE nao pertence a Roraima: ${codigo}`);
-    }
+    def __post_init__(self) -> None:
+        if len(self.valor) != 7 or not self.valor.isdigit():
+            raise ValueError(f"Codigo IBGE invalido: {self.valor}")
+        if self.valor not in self.MUNICIPIOS_RORAIMA:
+            raise ValueError(f"Codigo IBGE nao pertence a Roraima: {self.valor}")
 
-    return Result.ok(new CodigoIBGE(codigo));
-  }
-
-  get valor(): number {
-    return this._valor;
-  }
-
-  equals(other: CodigoIBGE): boolean {
-    return this._valor === other._valor;
-  }
-}
+    @classmethod
+    def create(cls, codigo: str | int) -> "Result[CodigoIBGE]":
+        try:
+            valor = str(codigo).zfill(7)
+            return Result.ok(cls(valor=valor))
+        except ValueError as e:
+            return Result.fail(str(e))
 ```
 
 **Agora o teste PASSA.**
 
 ### 3. REFACTOR - Melhorar sem Quebrar Testes
 
-```typescript
-// Extrair validacoes para metodos privados
-export class CodigoIBGE {
-  private static readonly MUNICIPIOS_RORAIMA = [...];
+```python
+# Extrair validacoes para metodos privados
+@dataclass(frozen=True)
+class CodigoIBGE:
+    valor: str
 
-  private constructor(private readonly _valor: number) {}
+    MUNICIPIOS_RORAIMA = frozenset([...])
 
-  static create(codigo: number): Result<CodigoIBGE> {
-    const validation = this.validate(codigo);
-    if (validation.isFailure) {
-      return Result.fail(validation.getError());
-    }
+    def __post_init__(self) -> None:
+        self._validate()
 
-    return Result.ok(new CodigoIBGE(codigo));
-  }
+    def _validate(self) -> None:
+        if not self._has_seven_digits():
+            raise ValueError(f"Codigo IBGE invalido: {self.valor}")
+        if not self._belongs_to_roraima():
+            raise ValueError(f"Codigo IBGE nao pertence a Roraima: {self.valor}")
 
-  private static validate(codigo: number): Result<void> {
-    if (!this.hasSevenDigits(codigo)) {
-      return Result.fail(`Codigo IBGE invalido: ${codigo}`);
-    }
+    def _has_seven_digits(self) -> bool:
+        return len(self.valor) == 7 and self.valor.isdigit()
 
-    if (!this.belongsToRoraima(codigo)) {
-      return Result.fail(`Codigo IBGE nao pertence a Roraima: ${codigo}`);
-    }
+    def _belongs_to_roraima(self) -> bool:
+        return self.valor in self.MUNICIPIOS_RORAIMA
 
-    return Result.ok();
-  }
-
-  private static hasSevenDigits(codigo: number): boolean {
-    return codigo >= 1000000 && codigo <= 9999999;
-  }
-
-  private static belongsToRoraima(codigo: number): boolean {
-    return this.MUNICIPIOS_RORAIMA.includes(codigo);
-  }
-
-  // ... resto do codigo
-}
+    @classmethod
+    def create(cls, codigo: str | int) -> "Result[CodigoIBGE]":
+        try:
+            valor = str(codigo).zfill(7)
+            return Result.ok(cls(valor=valor))
+        except ValueError as e:
+            return Result.fail(str(e))
 ```
 
 **Testes continuam PASSANDO.**
@@ -192,261 +176,229 @@ flowchart TB
 
 ### Testes Unitarios - Dominio
 
-```typescript
-// tests/unit/domain/value-objects/tipo-interrupcao.spec.ts
-describe('TipoInterrupcao', () => {
-  describe('fromPlanId', () => {
-    it('deve retornar PROGRAMADA quando PLAN_ID existe', () => {
-      const tipo = TipoInterrupcao.fromPlanId(12345);
-      expect(tipo.isProgramada()).toBe(true);
-    });
+```python
+# tests/unit/domain/value_objects/test_tipo_interrupcao.py
+import pytest
+from shared.domain.value_objects.tipo_interrupcao import TipoInterrupcao
 
-    it('deve retornar NAO_PROGRAMADA quando PLAN_ID e null', () => {
-      const tipo = TipoInterrupcao.fromPlanId(null);
-      expect(tipo.isProgramada()).toBe(false);
-    });
-  });
-});
 
-// tests/unit/domain/entities/interrupcao.spec.ts
-describe('Interrupcao', () => {
-  describe('isAtiva', () => {
-    it('deve ser ativa quando dataFim e null', () => {
-      const interrupcao = Interrupcao.create({
-        id: 1,
-        tipo: TipoInterrupcao.PROGRAMADA,
-        municipio: CodigoIBGE.create(1400100).getValue(),
-        conjunto: 1,
-        ucsAfetadas: 100,
-        dataInicio: new Date(),
-        dataFim: null
-      }).getValue();
+class TestTipoInterrupcao:
+    class TestFromPlanId:
+        def test_deve_retornar_programada_quando_plan_id_existe(self):
+            tipo = TipoInterrupcao.from_plan_id(12345)
+            assert tipo.is_programada() is True
 
-      expect(interrupcao.isAtiva()).toBe(true);
-    });
+        def test_deve_retornar_nao_programada_quando_plan_id_e_none(self):
+            tipo = TipoInterrupcao.from_plan_id(None)
+            assert tipo.is_programada() is False
 
-    it('deve ser inativa quando dataFim existe', () => {
-      const interrupcao = Interrupcao.create({
-        id: 1,
-        tipo: TipoInterrupcao.PROGRAMADA,
-        municipio: CodigoIBGE.create(1400100).getValue(),
-        conjunto: 1,
-        ucsAfetadas: 100,
-        dataInicio: new Date('2025-01-01'),
-        dataFim: new Date('2025-01-02')
-      }).getValue();
 
-      expect(interrupcao.isAtiva()).toBe(false);
-    });
-  });
-});
+# tests/unit/domain/entities/test_interrupcao.py
+class TestInterrupcao:
+    class TestIsAtiva:
+        def test_deve_ser_ativa_quando_data_fim_e_none(self):
+            interrupcao = Interrupcao.create({
+                "id": 1,
+                "tipo": TipoInterrupcao.PROGRAMADA,
+                "municipio": CodigoIBGE.create("1400100").value,
+                "conjunto": 1,
+                "ucs_afetadas": 100,
+                "data_inicio": datetime.now(),
+                "data_fim": None,
+            }).value
+
+            assert interrupcao.is_ativa() is True
+
+        def test_deve_ser_inativa_quando_data_fim_existe(self):
+            interrupcao = Interrupcao.create({
+                "id": 1,
+                "tipo": TipoInterrupcao.PROGRAMADA,
+                "municipio": CodigoIBGE.create("1400100").value,
+                "conjunto": 1,
+                "ucs_afetadas": 100,
+                "data_inicio": datetime(2025, 1, 1),
+                "data_fim": datetime(2025, 1, 2),
+            }).value
+
+            assert interrupcao.is_ativa() is False
 ```
 
 ### Testes Unitarios - Domain Services
 
-```typescript
-// tests/unit/domain/services/interrupcao-aggregator.spec.ts
-describe('InterrupcaoAggregatorService', () => {
-  let service: InterrupcaoAggregatorService;
+```python
+# tests/unit/domain/services/test_interrupcao_aggregator.py
+class TestInterrupcaoAggregatorService:
+    @pytest.fixture
+    def service(self):
+        return InterrupcaoAggregatorService()
 
-  beforeEach(() => {
-    service = new InterrupcaoAggregatorService();
-  });
+    def test_deve_agregar_interrupcoes_por_municipio_e_conjunto(self, service):
+        # Arrange
+        municipio = CodigoIBGE.create("1400100").value
+        interrupcoes = [
+            create_interrupcao(municipio=municipio, conjunto=1, tipo="PROGRAMADA", ucs=50),
+            create_interrupcao(municipio=municipio, conjunto=1, tipo="PROGRAMADA", ucs=30),
+            create_interrupcao(municipio=municipio, conjunto=1, tipo="NAO_PROGRAMADA", ucs=20),
+        ]
 
-  it('deve agregar interrupcoes por municipio e conjunto', () => {
-    // Arrange
-    const municipio = CodigoIBGE.create(1400100).getValue();
-    const interrupcoes = [
-      createInterrupcao({ municipio, conjunto: 1, tipo: 'PROGRAMADA', ucs: 50 }),
-      createInterrupcao({ municipio, conjunto: 1, tipo: 'PROGRAMADA', ucs: 30 }),
-      createInterrupcao({ municipio, conjunto: 1, tipo: 'NAO_PROGRAMADA', ucs: 20 })
-    ];
+        # Act
+        agregadas = service.agregar(interrupcoes)
 
-    // Act
-    const agregadas = service.agregar(interrupcoes);
+        # Assert
+        assert len(agregadas) == 1
+        assert agregadas[0].qtd_programada == 80
+        assert agregadas[0].qtd_nao_programada == 20
 
-    // Assert
-    expect(agregadas).toHaveLength(1);
-    expect(agregadas[0].qtdProgramada).toBe(80);
-    expect(agregadas[0].qtdNaoProgramada).toBe(20);
-  });
+    def test_deve_separar_por_conjunto_diferente(self, service):
+        municipio = CodigoIBGE.create("1400100").value
+        interrupcoes = [
+            create_interrupcao(municipio=municipio, conjunto=1, tipo="PROGRAMADA", ucs=50),
+            create_interrupcao(municipio=municipio, conjunto=2, tipo="PROGRAMADA", ucs=30),
+        ]
 
-  it('deve separar por conjunto diferente', () => {
-    const municipio = CodigoIBGE.create(1400100).getValue();
-    const interrupcoes = [
-      createInterrupcao({ municipio, conjunto: 1, tipo: 'PROGRAMADA', ucs: 50 }),
-      createInterrupcao({ municipio, conjunto: 2, tipo: 'PROGRAMADA', ucs: 30 })
-    ];
+        agregadas = service.agregar(interrupcoes)
 
-    const agregadas = service.agregar(interrupcoes);
-
-    expect(agregadas).toHaveLength(2);
-  });
-});
+        assert len(agregadas) == 2
 ```
 
 ### Testes de Integracao - Repositories
 
-```typescript
-// tests/integration/infrastructure/repositories/oracle-interrupcao.repository.spec.ts
-describe('OracleInterrupcaoRepository', () => {
-  let repository: OracleInterrupcaoRepository;
-  let pool: oracledb.Pool;
+```python
+# tests/integration/repositories/test_oracle_interrupcao_repository.py
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
-  beforeAll(async () => {
-    pool = await createTestPool();
-    repository = new OracleInterrupcaoRepository(pool);
-  });
 
-  afterAll(async () => {
-    await pool.close();
-  });
+@pytest.mark.integration
+class TestOracleInterrupcaoRepository:
+    @pytest.fixture
+    async def repository(self, db_session: AsyncSession):
+        return OracleInterrupcaoRepository(db_session)
 
-  describe('findAtivas', () => {
-    it('deve retornar apenas interrupcoes com is_open = T', async () => {
-      // Arrange - dados de teste inseridos via fixture
+    async def test_deve_retornar_apenas_interrupcoes_com_is_open_t(
+        self,
+        repository: OracleInterrupcaoRepository,
+    ):
+        # Act
+        interrupcoes = await repository.buscar_ativas()
 
-      // Act
-      const interrupcoes = await repository.findAtivas();
+        # Assert
+        assert all(i.is_ativa() for i in interrupcoes)
 
-      // Assert
-      expect(interrupcoes.every(i => i.isAtiva())).toBe(true);
-    });
+    async def test_deve_mapear_corretamente_os_campos_do_banco(
+        self,
+        repository: OracleInterrupcaoRepository,
+    ):
+        interrupcoes = await repository.buscar_ativas()
 
-    it('deve mapear corretamente os campos do banco', async () => {
-      const interrupcoes = await repository.findAtivas();
-
-      expect(interrupcoes[0]).toMatchObject({
-        id: expect.any(Number),
-        tipo: expect.any(TipoInterrupcao),
-        municipio: expect.any(CodigoIBGE),
-        conjunto: expect.any(Number),
-        ucsAfetadas: expect.any(Number)
-      });
-    });
-  });
-});
+        if interrupcoes:
+            interrupcao = interrupcoes[0]
+            assert isinstance(interrupcao.id, int)
+            assert isinstance(interrupcao._tipo, TipoInterrupcao)
+            assert isinstance(interrupcao.municipio, CodigoIBGE)
 ```
 
 ### Testes de Integracao - Use Cases
 
-```typescript
-// tests/integration/application/use-cases/get-interrupcoes-ativas.spec.ts
-describe('GetInterrupcoesAtivasUseCase', () => {
-  let useCase: GetInterrupcoesAtivasUseCase;
-  let repository: InterrupcaoRepository;
-  let cache: CacheRepository;
+```python
+# tests/integration/use_cases/test_get_interrupcoes_ativas.py
+@pytest.mark.integration
+class TestGetInterrupcoesAtivasUseCase:
+    @pytest.fixture
+    def use_case(self):
+        repository = InMemoryInterrupcaoRepository()
+        cache = InMemoryCacheService()
+        return GetInterrupcoesAtivasUseCase(repository, cache)
 
-  beforeEach(() => {
-    repository = new InMemoryInterrupcaoRepository();
-    cache = new InMemoryCacheRepository();
-    useCase = new GetInterrupcoesAtivasUseCase(repository, cache);
-  });
+    async def test_deve_retornar_dados_do_cache_quando_disponivel(
+        self,
+        use_case: GetInterrupcoesAtivasUseCase,
+    ):
+        # Arrange
+        cached_data = [create_agregada(qtd_programada=100)]
+        await use_case._cache.set("interrupcoes:ativas", cached_data, 300)
 
-  it('deve retornar dados do cache quando disponivel', async () => {
-    // Arrange
-    const cachedData = [createAgregada({ qtdProgramada: 100 })];
-    await cache.set('interrupcoes:ativas', cachedData, 300);
+        # Act
+        result = await use_case.execute()
 
-    // Act
-    const result = await useCase.execute();
+        # Assert
+        assert result.is_success
+        assert result.value == cached_data
 
-    // Assert
-    expect(result.isSuccess).toBe(true);
-    expect(result.getValue()).toEqual(cachedData);
-  });
+    async def test_deve_buscar_do_repositorio_quando_cache_vazio(
+        self,
+        use_case: GetInterrupcoesAtivasUseCase,
+    ):
+        # Arrange
+        interrupcoes = [
+            create_interrupcao(tipo="PROGRAMADA", ucs=50),
+            create_interrupcao(tipo="NAO_PROGRAMADA", ucs=30),
+        ]
+        await use_case._repository.save(interrupcoes)
 
-  it('deve buscar do repositorio quando cache vazio', async () => {
-    // Arrange
-    const interrupcoes = [
-      createInterrupcao({ tipo: 'PROGRAMADA', ucs: 50 }),
-      createInterrupcao({ tipo: 'NAO_PROGRAMADA', ucs: 30 })
-    ];
-    await repository.save(interrupcoes);
+        # Act
+        result = await use_case.execute()
 
-    // Act
-    const result = await useCase.execute();
-
-    // Assert
-    expect(result.isSuccess).toBe(true);
-    expect(result.getValue()[0].qtdProgramada).toBe(50);
-    expect(result.getValue()[0].qtdNaoProgramada).toBe(30);
-  });
-
-  it('deve armazenar resultado no cache', async () => {
-    // Arrange
-    await repository.save([createInterrupcao({ ucs: 100 })]);
-
-    // Act
-    await useCase.execute();
-
-    // Assert
-    const cached = await cache.get('interrupcoes:ativas');
-    expect(cached).not.toBeNull();
-  });
-});
+        # Assert
+        assert result.is_success
+        assert result.value[0].qtd_programada == 50
+        assert result.value[0].qtd_nao_programada == 30
 ```
 
 ### Testes E2E - API
 
-```typescript
-// tests/e2e/api/interrupcoes.e2e.spec.ts
-describe('GET /quantitativointerrupcoesativas', () => {
-  let app: FastifyInstance;
+```python
+# tests/e2e/api/test_interrupcoes.py
+import pytest
+from httpx import AsyncClient
+from fastapi import status
 
-  beforeAll(async () => {
-    app = await buildApp();
-  });
 
-  afterAll(async () => {
-    await app.close();
-  });
+@pytest.mark.e2e
+class TestQuantitativoInterrupcoesAtivas:
+    async def test_deve_retornar_200_com_formato_aneel(
+        self,
+        client: AsyncClient,
+        api_key: str,
+    ):
+        response = await client.get(
+            "/quantitativointerrupcoesativas",
+            headers={"x-api-key": api_key},
+        )
 
-  it('deve retornar 200 com formato ANEEL', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/quantitativointerrupcoesativas',
-      headers: {
-        'x-api-key': process.env.API_KEY
-      }
-    });
+        assert response.status_code == status.HTTP_200_OK
 
-    expect(response.statusCode).toBe(200);
+        body = response.json()
+        assert body["idcStatusRequisicao"] == 1
+        assert body["desStatusRequisicao"] == "Sucesso"
+        assert isinstance(body["listaInterrupcoes"], list)
 
-    const body = JSON.parse(response.body);
-    expect(body).toMatchObject({
-      idcStatusRequisicao: 1,
-      desStatusRequisicao: 'Sucesso',
-      listaInterrupcoes: expect.any(Array)
-    });
-  });
+    async def test_deve_retornar_401_sem_api_key(
+        self,
+        client: AsyncClient,
+    ):
+        response = await client.get("/quantitativointerrupcoesativas")
 
-  it('deve retornar 401 sem API Key', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/quantitativointerrupcoesativas'
-    });
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    expect(response.statusCode).toBe(401);
-  });
+    async def test_deve_incluir_campos_obrigatorios_na_resposta(
+        self,
+        client: AsyncClient,
+        api_key: str,
+    ):
+        response = await client.get(
+            "/quantitativointerrupcoesativas",
+            headers={"x-api-key": api_key},
+        )
 
-  it('deve incluir campos obrigatorios na resposta', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/quantitativointerrupcoesativas',
-      headers: { 'x-api-key': process.env.API_KEY }
-    });
-
-    const body = JSON.parse(response.body);
-    const item = body.listaInterrupcoes[0];
-
-    expect(item).toHaveProperty('ideConjuntoUnidadeConsumidora');
-    expect(item).toHaveProperty('ideMunicipio');
-    expect(item).toHaveProperty('qtdUCsAtendidas');
-    expect(item).toHaveProperty('qtdOcorrenciaProgramada');
-    expect(item).toHaveProperty('qtdOcorrenciaNaoProgramada');
-  });
-});
+        body = response.json()
+        if body["listaInterrupcoes"]:
+            item = body["listaInterrupcoes"][0]
+            assert "ideConjuntoUnidadeConsumidora" in item
+            assert "ideMunicipio" in item
+            assert "qtdUCsAtendidas" in item
+            assert "qtdOcorrenciaProgramada" in item
+            assert "qtdOcorrenciaNaoProgramada" in item
 ```
 
 ---
@@ -454,118 +406,122 @@ describe('GET /quantitativointerrupcoesativas', () => {
 ## Estrutura de Diretorios de Testes
 
 ```
-tests/
+backend/tests/
 ├── unit/                           # Testes unitarios
 │   ├── domain/
 │   │   ├── entities/
-│   │   │   └── interrupcao.spec.ts
-│   │   ├── value-objects/
-│   │   │   ├── codigo-ibge.spec.ts
-│   │   │   └── tipo-interrupcao.spec.ts
+│   │   │   └── test_interrupcao.py
+│   │   ├── value_objects/
+│   │   │   ├── test_codigo_ibge.py
+│   │   │   └── test_tipo_interrupcao.py
 │   │   └── services/
-│   │       └── interrupcao-aggregator.spec.ts
-│   ├── application/
-│   │   ├── use-cases/
-│   │   │   └── get-interrupcoes-ativas.spec.ts
-│   │   └── mappers/
-│   │       └── interrupcao.mapper.spec.ts
+│   │       └── test_interrupcao_aggregator.py
 │   └── shared/
-│       └── result.spec.ts
+│       └── test_result.py
 │
 ├── integration/                    # Testes de integracao
-│   ├── infrastructure/
-│   │   ├── repositories/
-│   │   │   └── oracle-interrupcao.repository.spec.ts
-│   │   └── cache/
-│   │       └── memory-cache.service.spec.ts
-│   └── application/
-│       └── use-cases/
-│           └── get-interrupcoes-with-cache.spec.ts
+│   ├── repositories/
+│   │   └── test_oracle_interrupcao_repository.py
+│   └── use_cases/
+│       └── test_get_interrupcoes_ativas.py
 │
 ├── e2e/                            # Testes end-to-end
 │   └── api/
-│       ├── interrupcoes.e2e.spec.ts
-│       ├── demandas.e2e.spec.ts
-│       └── health.e2e.spec.ts
+│       ├── test_interrupcoes.py
+│       ├── test_demandas.py
+│       └── test_health.py
 │
 ├── fixtures/                       # Dados de teste
-│   ├── interrupcoes.fixture.ts
-│   └── demandas.fixture.ts
+│   ├── interrupcoes.py
+│   └── demandas.py
 │
+├── conftest.py                     # Configuracao pytest
 └── helpers/                        # Funcoes auxiliares
-    ├── test-factories.ts
-    ├── mock-repositories.ts
-    └── test-database.ts
+    ├── factories.py
+    └── mock_repositories.py
 ```
 
 ---
 
-## Configuracao Vitest
+## Configuracao Pytest
 
-```typescript
-// vitest.config.ts
-import { defineConfig } from 'vitest/config';
-import path from 'path';
+```python
+# pyproject.toml
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+markers = [
+    "unit: Testes unitarios",
+    "integration: Testes de integracao",
+    "e2e: Testes end-to-end",
+]
 
-export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'node',
-    include: ['tests/**/*.spec.ts'],
-    exclude: ['tests/e2e/**'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html', 'lcov'],
-      exclude: [
-        'node_modules/',
-        'tests/',
-        'src/shared/config/',
-        '**/*.d.ts'
-      ],
-      thresholds: {
-        branches: 80,
-        functions: 80,
-        lines: 80,
-        statements: 80
-      }
-    },
-    setupFiles: ['tests/helpers/setup.ts']
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src')
-    }
-  }
-});
+[tool.coverage.run]
+source = ["backend"]
+omit = ["backend/tests/*", "**/__init__.py"]
 
-// vitest.config.e2e.ts
-export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'node',
-    include: ['tests/e2e/**/*.spec.ts'],
-    testTimeout: 30000,
-    hookTimeout: 30000
-  }
-});
+[tool.coverage.report]
+fail_under = 80
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+```
+
+```python
+# backend/tests/conftest.py
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
+from backend.apps.api_interrupcoes.main import create_app
+
+
+@pytest.fixture
+def app():
+    return create_app()
+
+
+@pytest.fixture
+async def client(app):
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
+
+
+@pytest.fixture
+def api_key():
+    return "test-api-key"
 ```
 
 ---
 
-## Scripts NPM
+## Comandos de Teste
 
-```json
-{
-  "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration",
-    "test:e2e": "vitest run --config vitest.config.e2e.ts",
-    "test:coverage": "vitest run --coverage",
-    "test:ci": "vitest run --coverage --reporter=junit"
-  }
-}
+```bash
+# Todos os testes
+pytest
+
+# Apenas testes unitarios
+pytest -m unit
+
+# Apenas testes de integracao
+pytest -m integration
+
+# Apenas testes e2e
+pytest -m e2e
+
+# Com cobertura
+pytest --cov=backend --cov-report=html
+
+# Modo watch (reexecuta ao salvar)
+pytest-watch
+
+# Verbose com output
+pytest -v -s
 ```
 
 ---

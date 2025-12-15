@@ -87,23 +87,30 @@ Abra [tasks.json](./tasks.json) para ver o backlog completo com checklists TDD.
 ## Comandos Uteis
 
 ```bash
+# Ambiente Virtual
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+.venv\Scripts\activate     # Windows
+
+# Instalacao
+pip install -e ".[dev]"
+
 # Desenvolvimento
-npm run dev          # Inicia servidor em modo desenvolvimento
-npm run build        # Compila TypeScript
+radar-api1           # Inicia API de Interrupcoes
+radar-api2           # Inicia API de Demanda
+radar-api3           # Inicia API de Demandas Diversas
+radar-api4           # Inicia API Tempo Real
 
 # Testes
-npm test             # Executa todos os testes
-npm run test:watch   # Testes em modo watch
-npm run test:coverage # Gera relatorio de cobertura
+pytest               # Executa todos os testes
+pytest -m unit       # Apenas testes unitarios
+pytest -m integration # Apenas testes de integracao
+pytest --cov         # Com relatorio de cobertura
 
 # Qualidade
-npm run lint         # Verifica codigo com ESLint
-npm run lint:fix     # Corrige problemas automaticamente
-npm run format       # Formata codigo com Prettier
-
-# Banco de Dados
-npm run db:migrate   # Executa migrations
-npm run db:seed      # Popula dados de teste
+ruff check backend/  # Verifica codigo
+ruff format backend/ # Formata codigo
+mypy backend/        # Verificacao de tipos
 ```
 
 ## Padroes de Commit

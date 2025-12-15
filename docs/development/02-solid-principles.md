@@ -27,78 +27,90 @@ mindmap
 
 ### Violacao (NAO FACA ISSO)
 
-```typescript
-// ERRADO: Classe com multiplas responsabilidades
-class InterrupcaoService {
-  async buscarInterrupcoes(): Promise<Interrupcao[]> {
-    // Busca no banco
-    const connection = await oracledb.getConnection();
-    const result = await connection.execute('SELECT ...');
+```python
+# ERRADO: Classe com multiplas responsabilidades
+class InterrupcaoService:
+    async def buscar_interrupcoes(self) -> list[Interrupcao]:
+        # Busca no banco
+        async with oracledb.connect() as conn:
+            cursor = await conn.cursor()
+            result = await cursor.execute("SELECT ...")
 
-    // Validacao
-    if (!result.rows.length) {
-      throw new Error('Sem dados');
-    }
+        # Validacao
+        if not result:
+            raise ValueError("Sem dados")
 
-    // Mapeamento
-    const interrupcoes = result.rows.map(row => ({
-      id: row[0],
-      tipo: row[1] ? 'PROGRAMADA' : 'NAO_PROGRAMADA'
-    }));
+        # Mapeamento
+        interrupcoes = [
+            {"id": row[0], "tipo": "PROGRAMADA" if row[1] else "NAO_PROGRAMADA"}
+            for row in result
+        ]
 
-    // Cache
-    this.cache.set('interrupcoes', interrupcoes);
+        # Cache
+        self.cache["interrupcoes"] = interrupcoes
 
-    // Log
-    console.log(`Encontradas ${interrupcoes.length} interrupcoes`);
+        # Log
+        print(f"Encontradas {len(interrupcoes)} interrupcoes")
 
-    return interrupcoes;
-  }
-}
+        return interrupcoes
 ```
 
 ### Correto (FACA ASSIM)
 
-```typescript
-// domain/repositories/interrupcao.repository.ts
-// Responsabilidade: Definir contrato de acesso a dados
-export interface InterrupcaoRepository {
-  findAtivas(): Promise<Interrupcao[]>;
-}
+```python
+# shared/domain/repositories/interrupcao_repository.py
+# Responsabilidade: Definir contrato de acesso a dados
+from typing import Protocol
 
-// infrastructure/repositories/oracle-interrupcao.repository.ts
-// Responsabilidade: Acesso ao banco Oracle
-export class OracleInterrupcaoRepository implements InterrupcaoRepository {
-  async findAtivas(): Promise<Interrupcao[]> {
-    const result = await this.pool.execute('SELECT ...');
-    return this.mapper.toDomain(result.rows);
-  }
-}
+class InterrupcaoRepository(Protocol):
+    async def buscar_ativas(self) -> list[Interrupcao]:
+        ...
 
-// application/mappers/interrupcao.mapper.ts
-// Responsabilidade: Conversao de dados
-export class InterrupcaoMapper {
-  toDomain(rows: any[]): Interrupcao[] {
-    return rows.map(row => Interrupcao.create({
-      id: row.NUM_1,
-      tipo: TipoInterrupcao.fromPlanId(row.PLAN_ID)
-    }));
-  }
-}
 
-// application/use-cases/get-interrupcoes.use-case.ts
-// Responsabilidade: Orquestrar busca com cache
-export class GetInterrupcoesUseCase {
-  async execute(): Promise<Result<Interrupcao[]>> {
-    const cached = await this.cache.get('interrupcoes');
-    if (cached) return Result.ok(cached);
+# apps/api_interrupcoes/repositories/oracle_interrupcao_repository.py
+# Responsabilidade: Acesso ao banco Oracle
+class OracleInterrupcaoRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
 
-    const interrupcoes = await this.repository.findAtivas();
-    await this.cache.set('interrupcoes', interrupcoes);
+    async def buscar_ativas(self) -> list[Interrupcao]:
+        result = await self._session.execute(text("SELECT ..."))
+        return self._mapper.to_domain(result.fetchall())
 
-    return Result.ok(interrupcoes);
-  }
-}
+
+# shared/domain/mappers/interrupcao_mapper.py
+# Responsabilidade: Conversao de dados
+class InterrupcaoMapper:
+    def to_domain(self, rows: list[tuple]) -> list[Interrupcao]:
+        return [
+            Interrupcao(
+                id=row[0],
+                tipo=TipoInterrupcao.from_plan_id(row[1]),
+            )
+            for row in rows
+        ]
+
+
+# apps/api_interrupcoes/use_cases/get_interrupcoes_ativas.py
+# Responsabilidade: Orquestrar busca com cache
+class GetInterrupcoesAtivasUseCase:
+    def __init__(
+        self,
+        repository: InterrupcaoRepository,
+        cache: CacheService,
+    ) -> None:
+        self._repository = repository
+        self._cache = cache
+
+    async def execute(self) -> Result[list[Interrupcao], DomainError]:
+        cached = await self._cache.get("interrupcoes")
+        if cached:
+            return Result.ok(cached)
+
+        interrupcoes = await self._repository.buscar_ativas()
+        await self._cache.set("interrupcoes", interrupcoes)
+
+        return Result.ok(interrupcoes)
 ```
 
 ---
@@ -112,59 +124,74 @@ export class GetInterrupcoesUseCase {
 ```mermaid
 classDiagram
     class ResponseFormatter {
-        <<interface>>
-        +format(data) string
+        <<Protocol>>
+        +format(data) str
     }
 
     class AneelFormatter {
-        +format(data) string
+        +format(data) str
     }
 
     class JsonFormatter {
-        +format(data) string
+        +format(data) str
     }
 
-    class XmlFormatter {
-        +format(data) string
+    class CsvFormatter {
+        +format(data) str
     }
 
     ResponseFormatter <|.. AneelFormatter
     ResponseFormatter <|.. JsonFormatter
-    ResponseFormatter <|.. XmlFormatter
+    ResponseFormatter <|.. CsvFormatter
 ```
 
-```typescript
-// shared/formatters/response-formatter.interface.ts
-export interface ResponseFormatter<T> {
-  format(data: T): string;
-}
+```python
+# shared/formatters/response_formatter.py
+from typing import Protocol, TypeVar
 
-// infrastructure/formatters/aneel.formatter.ts
-export class AneelFormatter implements ResponseFormatter<InterrupcaoAgregada[]> {
-  format(data: InterrupcaoAgregada[]): string {
-    return JSON.stringify({
-      idcStatusRequisicao: 1,
-      desStatusRequisicao: 'Sucesso',
-      listaInterrupcoes: data.map(item => ({
-        ideConjuntoUnidadeConsumidora: item.idConjunto,
-        ideMunicipio: item.municipioIbge,
-        qtdOcorrenciaProgramada: item.qtdProgramada,
-        qtdOcorrenciaNaoProgramada: item.qtdNaoProgramada
-      }))
-    });
-  }
-}
+T = TypeVar("T")
 
-// Para adicionar novo formato, crie nova classe - NAO modifique existente
-export class CsvFormatter implements ResponseFormatter<InterrupcaoAgregada[]> {
-  format(data: InterrupcaoAgregada[]): string {
-    const header = 'conjunto,municipio,programada,nao_programada\n';
-    const rows = data.map(d =>
-      `${d.idConjunto},${d.municipioIbge},${d.qtdProgramada},${d.qtdNaoProgramada}`
-    );
-    return header + rows.join('\n');
-  }
-}
+
+class ResponseFormatter(Protocol[T]):
+    def format(self, data: T) -> str:
+        ...
+
+
+# shared/infrastructure/http/aneel_formatter.py
+import json
+from dataclasses import asdict
+
+
+class AneelFormatter:
+    """Formata resposta no padrao ANEEL."""
+
+    def format(self, data: list[InterrupcaoAgregada]) -> str:
+        return json.dumps({
+            "idcStatusRequisicao": 1,
+            "desStatusRequisicao": "Sucesso",
+            "listaInterrupcoes": [
+                {
+                    "ideConjuntoUnidadeConsumidora": item.id_conjunto,
+                    "ideMunicipio": item.municipio_ibge,
+                    "qtdOcorrenciaProgramada": item.qtd_programada,
+                    "qtdOcorrenciaNaoProgramada": item.qtd_nao_programada,
+                }
+                for item in data
+            ],
+        })
+
+
+# Para adicionar novo formato, crie nova classe - NAO modifique existente
+class CsvFormatter:
+    """Formata resposta em CSV."""
+
+    def format(self, data: list[InterrupcaoAgregada]) -> str:
+        header = "conjunto,municipio,programada,nao_programada\n"
+        rows = [
+            f"{d.id_conjunto},{d.municipio_ibge},{d.qtd_programada},{d.qtd_nao_programada}"
+            for d in data
+        ]
+        return header + "\n".join(rows)
 ```
 
 ---
@@ -175,59 +202,76 @@ export class CsvFormatter implements ResponseFormatter<InterrupcaoAgregada[]> {
 
 ### Aplicacao no RADAR
 
-```typescript
-// domain/repositories/cache.repository.ts
-export interface CacheRepository {
-  get<T>(key: string): Promise<T | null>;
-  set<T>(key: string, value: T, ttlSeconds: number): Promise<void>;
-  invalidate(key: string): Promise<void>;
-}
+```python
+# shared/domain/cache/cache_service.py
+from typing import Protocol, TypeVar
 
-// infrastructure/cache/memory-cache.service.ts
-export class MemoryCacheService implements CacheRepository {
-  private cache = new Map<string, { value: any; expiresAt: number }>();
+T = TypeVar("T")
 
-  async get<T>(key: string): Promise<T | null> {
-    const item = this.cache.get(key);
-    if (!item || Date.now() > item.expiresAt) {
-      return null;
-    }
-    return item.value as T;
-  }
 
-  async set<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
-    this.cache.set(key, {
-      value,
-      expiresAt: Date.now() + ttlSeconds * 1000
-    });
-  }
+class CacheService(Protocol):
+    async def get(self, key: str) -> T | None:
+        ...
 
-  async invalidate(key: string): Promise<void> {
-    this.cache.delete(key);
-  }
-}
+    async def set(self, key: str, value: T, ttl_seconds: int) -> None:
+        ...
 
-// infrastructure/cache/redis-cache.service.ts (futuro)
-export class RedisCacheService implements CacheRepository {
-  async get<T>(key: string): Promise<T | null> {
-    const data = await this.redis.get(key);
-    return data ? JSON.parse(data) : null;
-  }
+    async def invalidate(self, key: str) -> None:
+        ...
 
-  async set<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
-    await this.redis.setex(key, ttlSeconds, JSON.stringify(value));
-  }
 
-  async invalidate(key: string): Promise<void> {
-    await this.redis.del(key);
-  }
-}
+# shared/infrastructure/cache/memory_cache.py
+from datetime import datetime, timedelta
 
-// Qualquer implementacao pode ser usada sem alterar o codigo cliente
-const useCase = new GetInterrupcoesUseCase(
-  repository,
-  new MemoryCacheService() // ou new RedisCacheService()
-);
+
+class MemoryCacheService:
+    """Implementacao de cache em memoria."""
+
+    def __init__(self) -> None:
+        self._cache: dict[str, tuple[Any, datetime]] = {}
+
+    async def get(self, key: str) -> Any | None:
+        if key not in self._cache:
+            return None
+
+        value, expires_at = self._cache[key]
+        if datetime.now() > expires_at:
+            del self._cache[key]
+            return None
+
+        return value
+
+    async def set(self, key: str, value: Any, ttl_seconds: int) -> None:
+        expires_at = datetime.now() + timedelta(seconds=ttl_seconds)
+        self._cache[key] = (value, expires_at)
+
+    async def invalidate(self, key: str) -> None:
+        self._cache.pop(key, None)
+
+
+# shared/infrastructure/cache/redis_cache.py (futuro)
+class RedisCacheService:
+    """Implementacao de cache com Redis."""
+
+    def __init__(self, redis_client: Redis) -> None:
+        self._redis = redis_client
+
+    async def get(self, key: str) -> Any | None:
+        data = await self._redis.get(key)
+        return json.loads(data) if data else None
+
+    async def set(self, key: str, value: Any, ttl_seconds: int) -> None:
+        await self._redis.setex(key, ttl_seconds, json.dumps(value))
+
+    async def invalidate(self, key: str) -> None:
+        await self._redis.delete(key)
+
+
+# Qualquer implementacao pode ser usada sem alterar o codigo cliente
+use_case = GetInterrupcoesAtivasUseCase(
+    repository=repository,
+    cache=MemoryCacheService(),  # ou RedisCacheService(redis)
+)
 ```
 
 ---
@@ -238,77 +282,75 @@ const useCase = new GetInterrupcoesUseCase(
 
 ### Violacao (NAO FACA ISSO)
 
-```typescript
-// ERRADO: Interface muito grande
-interface DatabaseRepository {
-  findAll(): Promise<any[]>;
-  findById(id: number): Promise<any>;
-  create(data: any): Promise<any>;
-  update(id: number, data: any): Promise<any>;
-  delete(id: number): Promise<void>;
-  executeRawQuery(sql: string): Promise<any>;
-  beginTransaction(): Promise<void>;
-  commit(): Promise<void>;
-  rollback(): Promise<void>;
-}
+```python
+# ERRADO: Protocol muito grande
+class DatabaseRepository(Protocol):
+    async def find_all(self) -> list[Any]: ...
+    async def find_by_id(self, id: int) -> Any: ...
+    async def create(self, data: Any) -> Any: ...
+    async def update(self, id: int, data: Any) -> Any: ...
+    async def delete(self, id: int) -> None: ...
+    async def execute_raw_query(self, sql: str) -> Any: ...
+    async def begin_transaction(self) -> None: ...
+    async def commit(self) -> None: ...
+    async def rollback(self) -> None: ...
 ```
 
 ### Correto (FACA ASSIM)
 
-```typescript
-// domain/repositories/interrupcao.repository.ts
-// Interface especifica para leitura de interrupcoes
-export interface InterrupcaoRepository {
-  findAtivas(): Promise<Interrupcao[]>;
-  findByMunicipio(ibge: CodigoIBGE): Promise<Interrupcao[]>;
-  findHistorico(params: HistoricoParams): Promise<Interrupcao[]>;
-}
+```python
+# shared/domain/repositories/interrupcao_repository.py
+# Protocol especifico para leitura de interrupcoes
+class InterrupcaoRepository(Protocol):
+    async def buscar_ativas(self) -> list[Interrupcao]: ...
+    async def buscar_por_municipio(self, ibge: CodigoIBGE) -> list[Interrupcao]: ...
+    async def buscar_historico(self, params: HistoricoParams) -> list[Interrupcao]: ...
 
-// domain/repositories/universo.repository.ts
-// Interface especifica para dados de universo
-export interface UniversoRepository {
-  findMunicipioByDispositivo(devId: number): Promise<CodigoIBGE>;
-  findConjuntoByDispositivo(devId: number): Promise<number>;
-}
 
-// domain/repositories/cache.repository.ts
-// Interface especifica para cache
-export interface CacheRepository {
-  get<T>(key: string): Promise<T | null>;
-  set<T>(key: string, value: T, ttl: number): Promise<void>;
-  invalidate(key: string): Promise<void>;
-}
+# shared/domain/repositories/universo_repository.py
+# Protocol especifico para dados de universo
+class UniversoRepository(Protocol):
+    async def buscar_municipio_por_dispositivo(self, dev_id: int) -> CodigoIBGE: ...
+    async def buscar_conjunto_por_dispositivo(self, dev_id: int) -> int: ...
+
+
+# shared/domain/cache/cache_service.py
+# Protocol especifico para cache
+class CacheService(Protocol):
+    async def get(self, key: str) -> Any | None: ...
+    async def set(self, key: str, value: Any, ttl: int) -> None: ...
+    async def invalidate(self, key: str) -> None: ...
 ```
 
 ```mermaid
 classDiagram
     class InterrupcaoRepository {
-        <<interface>>
-        +findAtivas()
-        +findByMunicipio()
-        +findHistorico()
+        <<Protocol>>
+        +buscar_ativas()
+        +buscar_por_municipio()
+        +buscar_historico()
     }
 
     class UniversoRepository {
-        <<interface>>
-        +findMunicipioByDispositivo()
-        +findConjuntoByDispositivo()
+        <<Protocol>>
+        +buscar_municipio_por_dispositivo()
+        +buscar_conjunto_por_dispositivo()
     }
 
-    class CacheRepository {
-        <<interface>>
+    class CacheService {
+        <<Protocol>>
         +get()
         +set()
         +invalidate()
     }
 
     class GetInterrupcoesUseCase {
-        -interrupcaoRepo: InterrupcaoRepository
-        -cache: CacheRepository
+        -interrupcao_repo: InterrupcaoRepository
+        -cache: CacheService
     }
 
     GetInterrupcoesUseCase --> InterrupcaoRepository
-    GetInterrupcoesUseCase --> CacheRepository
+    GetInterrupcoesUseCase --> CacheService
     GetInterrupcoesUseCase ..> UniversoRepository : nao usa
 ```
 
@@ -320,73 +362,78 @@ classDiagram
 
 ### Violacao (NAO FACA ISSO)
 
-```typescript
-// ERRADO: Dependencia direta de implementacao
-import oracledb from 'oracledb';
+```python
+# ERRADO: Dependencia direta de implementacao
+import oracledb
 
-class GetInterrupcoesUseCase {
-  async execute() {
-    // Acoplamento direto com Oracle
-    const connection = await oracledb.getConnection({
-      user: 'radar',
-      password: 'secret',
-      connectionString: 'localhost/XE'
-    });
 
-    const result = await connection.execute('SELECT ...');
-    return result.rows;
-  }
-}
+class GetInterrupcoesUseCase:
+    async def execute(self) -> list[dict]:
+        # Acoplamento direto com Oracle
+        connection = await oracledb.connect(
+            user="radar",
+            password="secret",
+            dsn="localhost/XE",
+        )
+
+        cursor = connection.cursor()
+        result = await cursor.execute("SELECT ...")
+        return result.fetchall()
 ```
 
 ### Correto (FACA ASSIM)
 
-```typescript
-// domain/repositories/interrupcao.repository.ts
-// Abstracao definida no dominio
-export interface InterrupcaoRepository {
-  findAtivas(): Promise<Interrupcao[]>;
-}
+```python
+# shared/domain/repositories/interrupcao_repository.py
+# Abstracao definida no dominio
+from typing import Protocol
 
-// application/use-cases/get-interrupcoes.use-case.ts
-// Depende da abstracao
-export class GetInterrupcoesUseCase {
-  constructor(
-    private readonly repository: InterrupcaoRepository,
-    private readonly cache: CacheRepository
-  ) {}
 
-  async execute(): Promise<Result<InterrupcaoAgregada[]>> {
-    const cached = await this.cache.get<InterrupcaoAgregada[]>('interrupcoes');
-    if (cached) {
-      return Result.ok(cached);
-    }
+class InterrupcaoRepository(Protocol):
+    async def buscar_ativas(self) -> list[Interrupcao]:
+        ...
 
-    const interrupcoes = await this.repository.findAtivas();
-    const agregadas = this.agregar(interrupcoes);
 
-    await this.cache.set('interrupcoes', agregadas, 300);
+# apps/api_interrupcoes/use_cases/get_interrupcoes_ativas.py
+# Depende da abstracao
+class GetInterrupcoesAtivasUseCase:
+    def __init__(
+        self,
+        repository: InterrupcaoRepository,
+        cache: CacheService,
+    ) -> None:
+        self._repository = repository
+        self._cache = cache
 
-    return Result.ok(agregadas);
-  }
-}
+    async def execute(self) -> Result[list[InterrupcaoAgregada], DomainError]:
+        cached = await self._cache.get("interrupcoes")
+        if cached:
+            return Result.ok(cached)
 
-// infrastructure/repositories/oracle-interrupcao.repository.ts
-// Implementacao concreta
-export class OracleInterrupcaoRepository implements InterrupcaoRepository {
-  constructor(private readonly pool: oracledb.Pool) {}
+        interrupcoes = await self._repository.buscar_ativas()
+        agregadas = self._agregar(interrupcoes)
 
-  async findAtivas(): Promise<Interrupcao[]> {
-    const result = await this.pool.execute(`
-      SELECT ae.num_1, ae.NUM_CUST, spt.PLAN_ID, ...
-      FROM INSERVICE.AGENCY_EVENT@DBLINK_INSERVICE ae
-      LEFT JOIN INSERVICE.SWITCH_PLAN_TASKS@DBLINK_INSERVICE spt
-        ON spt.OUTAGE_NUM = ae.num_1
-      WHERE ae.is_open = 'T'
-    `);
-    return this.mapToEntities(result.rows);
-  }
-}
+        await self._cache.set("interrupcoes", agregadas, ttl=300)
+
+        return Result.ok(agregadas)
+
+
+# apps/api_interrupcoes/repositories/oracle_interrupcao_repository.py
+# Implementacao concreta
+class OracleInterrupcaoRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def buscar_ativas(self) -> list[Interrupcao]:
+        query = """
+            SELECT ae.num_1, ae.NUM_CUST, spt.PLAN_ID
+            FROM INSERVICE.AGENCY_EVENT@DBLINK_INSERVICE ae
+            LEFT JOIN INSERVICE.SWITCH_PLAN_TASKS@DBLINK_INSERVICE spt
+                ON spt.OUTAGE_NUM = ae.num_1
+            WHERE ae.is_open = 'T'
+        """
+        result = await self._session.execute(text(query))
+        return self._map_to_entities(result.fetchall())
 ```
 
 ```mermaid
@@ -396,8 +443,8 @@ flowchart TB
     end
 
     subgraph Abstracoes["Abstracoes"]
-        IR[InterrupcaoRepository<br/>interface]
-        CR[CacheRepository<br/>interface]
+        IR[InterrupcaoRepository<br/>Protocol]
+        CR[CacheService<br/>Protocol]
     end
 
     subgraph Baixo["Baixo Nivel (Detalhes)"]
@@ -430,12 +477,12 @@ flowchart TB
 
 ### Liskov Substitution
 - [ ] Subclasses podem substituir suas classes base?
-- [ ] Os contratos das interfaces sao respeitados?
+- [ ] Os contratos dos Protocols sao respeitados?
 
 ### Interface Segregation
-- [ ] As interfaces sao pequenas e focadas?
-- [ ] Os clientes usam todos os metodos das interfaces que implementam?
+- [ ] Os Protocols sao pequenos e focados?
+- [ ] Os clientes usam todos os metodos dos Protocols que implementam?
 
 ### Dependency Inversion
-- [ ] Modulos de alto nivel dependem de abstracoes?
+- [ ] Modulos de alto nivel dependem de abstracoes (Protocols)?
 - [ ] Detalhes de implementacao estao isolados?

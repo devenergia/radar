@@ -7,20 +7,20 @@ A Clean Architecture (Arquitetura Limpa) organiza o codigo em camadas concentric
 ```mermaid
 flowchart TB
     subgraph External["Camada Externa (Frameworks & Drivers)"]
-        HTTP[Fastify HTTP]
-        ORM[OracleDB Driver]
+        HTTP[FastAPI HTTP]
+        ORM[SQLAlchemy/oracledb]
         CACHE[Memory Cache]
     end
 
     subgraph Adapters["Camada de Adaptadores"]
-        CTRL[Controllers]
+        ROUTES[Routes/Endpoints]
         REPO_IMPL[Repository Implementations]
-        MAPPERS[Mappers/Presenters]
+        SCHEMAS[Pydantic Schemas]
     end
 
     subgraph UseCases["Camada de Casos de Uso"]
         UC[Use Cases]
-        PORTS[Ports/Interfaces]
+        PORTS[Ports/Protocols]
     end
 
     subgraph Domain["Camada de Dominio"]
@@ -42,60 +42,38 @@ flowchart TB
 ## Estrutura do Projeto RADAR
 
 ```
-src/
-├── domain/                    # Camada de Dominio (mais interna)
-│   ├── entities/              # Entidades de negocio
-│   │   ├── interrupcao.entity.ts
-│   │   └── demanda.entity.ts
-│   ├── value-objects/         # Value Objects imutaveis
-│   │   ├── codigo-ibge.vo.ts
-│   │   ├── tipo-interrupcao.vo.ts
-│   │   └── data-hora-brasilia.vo.ts
-│   ├── repositories/          # Interfaces (Ports) dos repositorios
-│   │   ├── interrupcao.repository.ts
-│   │   └── universo.repository.ts
-│   └── services/              # Servicos de dominio
-│       └── interrupcao-aggregator.service.ts
+backend/
+├── shared/                        # Codigo compartilhado
+│   ├── domain/                    # Camada de Dominio (mais interna)
+│   │   ├── entities/
+│   │   │   └── interrupcao.py     # Entidade Interrupcao
+│   │   ├── value_objects/
+│   │   │   ├── codigo_ibge.py     # VO CodigoIBGE
+│   │   │   └── tipo_interrupcao.py # Enum TipoInterrupcao
+│   │   ├── errors.py              # Erros de dominio
+│   │   └── result.py              # Padrao Result[T, E]
+│   │
+│   └── infrastructure/            # Camada de Infraestrutura
+│       ├── database/
+│       │   └── oracle_connection.py
+│       ├── cache/
+│       │   └── memory_cache.py
+│       ├── http/
+│       │   └── aneel_response.py
+│       ├── config.py              # Settings com Pydantic
+│       └── logger.py              # Structlog
 │
-├── application/               # Camada de Aplicacao
-│   ├── use-cases/             # Casos de uso
-│   │   ├── get-interrupcoes-ativas.use-case.ts
-│   │   └── get-quantitativo-demandas.use-case.ts
-│   ├── dtos/                  # Data Transfer Objects
-│   │   ├── interrupcao.dto.ts
-│   │   └── aneel-response.dto.ts
-│   └── mappers/               # Conversores de dados
-│       └── interrupcao.mapper.ts
-│
-├── infrastructure/            # Camada de Infraestrutura
-│   ├── database/              # Configuracao do banco
-│   │   ├── oracle.connection.ts
-│   │   └── oracle.pool.ts
-│   ├── repositories/          # Implementacoes dos repositorios
-│   │   ├── oracle-interrupcao.repository.ts
-│   │   └── oracle-universo.repository.ts
-│   └── cache/                 # Implementacao de cache
-│       └── memory-cache.service.ts
-│
-├── interfaces/                # Camada de Interface (Adapters)
-│   └── http/
-│       ├── controllers/       # Controllers HTTP
-│       │   └── interrupcoes.controller.ts
-│       ├── middlewares/       # Middlewares
-│       │   ├── auth.middleware.ts
-│       │   └── error-handler.middleware.ts
-│       ├── routes/            # Definicao de rotas
-│       │   └── api.routes.ts
-│       └── validators/        # Validadores de request
-│           └── request.validator.ts
-│
-└── shared/                    # Codigo compartilhado
-    ├── config/                # Configuracoes
-    │   └── env.config.ts
-    ├── errors/                # Erros customizados
-    │   └── domain.errors.ts
-    └── utils/                 # Utilitarios
-        └── date.utils.ts
+└── apps/                          # APIs (Interfaces)
+    └── api_interrupcoes/
+        ├── main.py                # FastAPI app factory
+        ├── routes.py              # Endpoints HTTP
+        ├── schemas.py             # Pydantic models
+        ├── dependencies.py        # Injecao de dependencias
+        ├── middleware.py          # Error handler, logging
+        ├── use_cases/
+        │   └── get_interrupcoes_ativas.py
+        └── repositories/
+            └── interrupcao_repository.py
 ```
 
 ## Regra de Dependencia
@@ -123,92 +101,167 @@ flowchart LR
 
 ### Exemplo Pratico no RADAR
 
-```typescript
-// domain/repositories/interrupcao.repository.ts
-// A interface (Port) esta no dominio - nao conhece Oracle
-export interface InterrupcaoRepository {
-  findAtivas(): Promise<Interrupcao[]>;
-  findByMunicipio(ibge: CodigoIBGE): Promise<Interrupcao[]>;
-}
+```python
+# shared/domain/entities/interrupcao.py
+# A entidade esta no dominio - nao conhece Oracle ou FastAPI
+from dataclasses import dataclass
+from datetime import datetime
+from ..value_objects.codigo_ibge import CodigoIBGE
+from ..value_objects.tipo_interrupcao import TipoInterrupcao
 
-// infrastructure/repositories/oracle-interrupcao.repository.ts
-// A implementacao conhece Oracle, mas implementa a interface do dominio
-import { InterrupcaoRepository } from '@/domain/repositories/interrupcao.repository';
-import oracledb from 'oracledb';
 
-export class OracleInterrupcaoRepository implements InterrupcaoRepository {
-  constructor(private pool: oracledb.Pool) {}
+@dataclass(frozen=True)
+class Interrupcao:
+    """Entidade que representa uma interrupcao de fornecimento."""
 
-  async findAtivas(): Promise<Interrupcao[]> {
-    const result = await this.pool.execute(`
-      SELECT ...
-      FROM INSERVICE.AGENCY_EVENT@DBLINK_INSERVICE ae
-      WHERE ae.is_open = 'T'
-    `);
-    return this.mapToEntities(result.rows);
-  }
-}
+    id: int
+    codigo_ibge: CodigoIBGE
+    tipo: TipoInterrupcao
+    data_inicio: datetime
+    consumidores_afetados: int
+
+    def is_programada(self) -> bool:
+        return self.tipo == TipoInterrupcao.PROGRAMADA
+```
+
+```python
+# shared/domain/repositories/interrupcao_repository.py
+# A interface (Protocol) esta no dominio - nao conhece Oracle
+from typing import Protocol
+from ..entities.interrupcao import Interrupcao
+from ..value_objects.codigo_ibge import CodigoIBGE
+
+
+class InterrupcaoRepository(Protocol):
+    """Port para repositorio de interrupcoes."""
+
+    async def buscar_ativas(self) -> list[Interrupcao]:
+        """Busca todas as interrupcoes ativas."""
+        ...
+
+    async def buscar_por_municipio(self, ibge: CodigoIBGE) -> list[Interrupcao]:
+        """Busca interrupcoes por codigo IBGE do municipio."""
+        ...
+```
+
+```python
+# apps/api_interrupcoes/repositories/oracle_interrupcao_repository.py
+# A implementacao conhece Oracle, mas implementa o Protocol do dominio
+from sqlalchemy.ext.asyncio import AsyncSession
+from shared.domain.entities.interrupcao import Interrupcao
+from shared.domain.value_objects.codigo_ibge import CodigoIBGE
+
+
+class OracleInterrupcaoRepository:
+    """Adapter que implementa InterrupcaoRepository usando Oracle."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def buscar_ativas(self) -> list[Interrupcao]:
+        query = """
+            SELECT ae.event_id, ae.city_ibge_code, ae.event_type,
+                   ae.start_time, ae.affected_customers
+            FROM INSERVICE.AGENCY_EVENT@DBLINK_INSERVICE ae
+            WHERE ae.is_open = 'T'
+        """
+        result = await self._session.execute(text(query))
+        return [self._to_entity(row) for row in result.fetchall()]
+
+    def _to_entity(self, row) -> Interrupcao:
+        return Interrupcao(
+            id=row.event_id,
+            codigo_ibge=CodigoIBGE(row.city_ibge_code),
+            tipo=TipoInterrupcao(row.event_type),
+            data_inicio=row.start_time,
+            consumidores_afetados=row.affected_customers,
+        )
 ```
 
 ## Inversao de Dependencia (DIP)
 
-O dominio define interfaces (Ports), e a infraestrutura as implementa (Adapters):
+O dominio define interfaces (Protocols), e a infraestrutura as implementa (Adapters):
 
 ```mermaid
 classDiagram
     class InterrupcaoRepository {
-        <<interface>>
-        +findAtivas() Promise~Interrupcao[]~
-        +findByMunicipio(ibge) Promise~Interrupcao[]~
+        <<Protocol>>
+        +buscar_ativas() list[Interrupcao]
+        +buscar_por_municipio(ibge) list[Interrupcao]
     }
 
     class GetInterrupcoesUseCase {
         -repository: InterrupcaoRepository
-        +execute() Promise~Result~
+        +execute() Result
     }
 
     class OracleInterrupcaoRepository {
-        -pool: OraclePool
-        +findAtivas() Promise~Interrupcao[]~
-        +findByMunicipio(ibge) Promise~Interrupcao[]~
+        -session: AsyncSession
+        +buscar_ativas() list[Interrupcao]
+        +buscar_por_municipio(ibge) list[Interrupcao]
     }
 
     InterrupcaoRepository <|.. OracleInterrupcaoRepository : implements
     GetInterrupcoesUseCase --> InterrupcaoRepository : depends on
 ```
 
-## Injecao de Dependencia
+## Injecao de Dependencia com FastAPI
 
-```typescript
-// shared/container.ts
-import { container } from 'tsyringe';
+```python
+# apps/api_interrupcoes/dependencies.py
+from functools import lru_cache
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
-// Registrar implementacoes
-container.registerSingleton<InterrupcaoRepository>(
-  'InterrupcaoRepository',
-  OracleInterrupcaoRepository
-);
+from shared.infrastructure.config import Settings
+from shared.infrastructure.database.oracle_connection import get_session
+from .repositories.oracle_interrupcao_repository import OracleInterrupcaoRepository
+from .use_cases.get_interrupcoes_ativas import GetInterrupcoesAtivasUseCase
 
-container.registerSingleton<CacheService>(
-  'CacheService',
-  MemoryCacheService
-);
 
-// application/use-cases/get-interrupcoes-ativas.use-case.ts
-@injectable()
-export class GetInterrupcoesAtivasUseCase {
-  constructor(
-    @inject('InterrupcaoRepository')
-    private repository: InterrupcaoRepository,
+@lru_cache
+def get_settings() -> Settings:
+    """Singleton das configuracoes."""
+    return Settings()
 
-    @inject('CacheService')
-    private cache: CacheService
-  ) {}
 
-  async execute(): Promise<Result<InterrupcaoAgregada[]>> {
-    // Logica do caso de uso
-  }
-}
+async def get_repository(
+    session: AsyncSession = Depends(get_session),
+) -> OracleInterrupcaoRepository:
+    """Factory do repositorio."""
+    return OracleInterrupcaoRepository(session)
+
+
+async def get_use_case(
+    repository: OracleInterrupcaoRepository = Depends(get_repository),
+) -> GetInterrupcoesAtivasUseCase:
+    """Factory do caso de uso."""
+    return GetInterrupcoesAtivasUseCase(repository)
+```
+
+```python
+# apps/api_interrupcoes/routes.py
+from fastapi import APIRouter, Depends, Header
+from .dependencies import get_use_case
+from .schemas import InterrupcaoResponse
+from .use_cases.get_interrupcoes_ativas import GetInterrupcoesAtivasUseCase
+
+router = APIRouter()
+
+
+@router.get(
+    "/quantitativointerrupcoesativas",
+    response_model=InterrupcaoResponse,
+    summary="Consulta interrupcoes ativas",
+)
+async def get_interrupcoes(
+    dthRecuperacao: str,
+    x_api_key: str = Header(..., alias="x-api-key"),
+    use_case: GetInterrupcoesAtivasUseCase = Depends(get_use_case),
+) -> InterrupcaoResponse:
+    """Retorna o quantitativo de interrupcoes ativas."""
+    result = await use_case.execute(dthRecuperacao)
+    return result.to_response()
 ```
 
 ## Beneficios para o RADAR
@@ -221,8 +274,8 @@ export class GetInterrupcoesAtivasUseCase {
 ## Checklist de Implementacao
 
 - [ ] Entidades nao importam nada de infraestrutura
-- [ ] Casos de uso dependem apenas de interfaces (Ports)
-- [ ] Repositorios implementam interfaces definidas no dominio
-- [ ] Controllers sao finos - apenas delegam para casos de uso
-- [ ] DTOs fazem a conversao entre camadas
+- [ ] Casos de uso dependem apenas de Protocols (interfaces)
+- [ ] Repositorios implementam Protocols definidos no dominio
+- [ ] Routes sao finas - apenas delegam para casos de uso
+- [ ] Schemas Pydantic fazem a conversao entre camadas
 - [ ] Erros de dominio sao diferentes de erros HTTP

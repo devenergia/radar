@@ -12,55 +12,69 @@ Clean Code sao praticas que tornam o codigo legivel, mantenivel e expressivo. O 
 
 ### Nomes Reveladores de Intencao
 
-```typescript
-// RUIM - O que significa 'd' e 't'?
-const d = new Date();
-const t = 5;
+```python
+# RUIM - O que significa 'd' e 't'?
+d = datetime.now()
+t = 5
 
-// BOM - Intencao clara
-const dataInicioInterrupcao = new Date();
-const ttlCacheEmMinutos = 5;
+# BOM - Intencao clara
+data_inicio_interrupcao = datetime.now()
+ttl_cache_em_minutos = 5
 ```
 
-```typescript
-// RUIM - Abreviacoes confusas
-function getIntAgg(ibge: number): IntAgg[] { }
+```python
+# RUIM - Abreviacoes confusas
+def get_int_agg(ibge: int) -> list:
+    pass
 
-// BOM - Nome completo e descritivo
-function getInterrupcoesAgregadasPorMunicipio(
-  codigoIbge: CodigoIBGE
-): InterrupcaoAgregada[] { }
+# BOM - Nome completo e descritivo
+def get_interrupcoes_agregadas_por_municipio(
+    codigo_ibge: CodigoIBGE,
+) -> list[InterrupcaoAgregada]:
+    pass
 ```
 
 ### Nomes Pronunciaveis e Pesquisaveis
 
-```typescript
-// RUIM - Impronunciavel e dificil de buscar
-const ymdhms = new Date();
-const uc = 150;
+```python
+# RUIM - Impronunciavel e dificil de buscar
+ymdhms = datetime.now()
+uc = 150
 
-// BOM - Pronunciavel e facil de encontrar
-const dataHoraFormatoBrasilia = new Date();
-const unidadesConsumidorasAfetadas = 150;
+# BOM - Pronunciavel e facil de encontrar
+data_hora_formato_brasilia = datetime.now()
+unidades_consumidoras_afetadas = 150
 ```
 
 ### Nomes de Classes e Metodos
 
-```typescript
-// Classes: Substantivos no singular
-class Interrupcao { }
-class CodigoIBGE { }
-class InterrupcaoRepository { }
+```python
+# Classes: Substantivos no singular
+class Interrupcao:
+    pass
 
-// Metodos: Verbos que descrevem acao
-class InterrupcaoRepository {
-  findAtivas(): Promise<Interrupcao[]> { }
-  findByMunicipio(ibge: CodigoIBGE): Promise<Interrupcao[]> { }
-}
+class CodigoIBGE:
+    pass
 
-// Use Cases: Verbo + Substantivo
-class GetInterrupcoesAtivasUseCase { }
-class ValidarCodigoIbgeUseCase { }
+class InterrupcaoRepository(Protocol):
+    pass
+
+
+# Metodos: Verbos que descrevem acao
+class InterrupcaoRepository(Protocol):
+    async def buscar_ativas(self) -> list[Interrupcao]:
+        ...
+
+    async def buscar_por_municipio(self, ibge: CodigoIBGE) -> list[Interrupcao]:
+        ...
+
+
+# Use Cases: Verbo + Substantivo
+class GetInterrupcoesAtivasUseCase:
+    pass
+
+class ValidarCodigoIbgeUseCase:
+    pass
 ```
 
 ---
@@ -69,119 +83,121 @@ class ValidarCodigoIbgeUseCase { }
 
 ### Funcoes Pequenas
 
-```typescript
-// RUIM - Funcao faz muitas coisas
-async function processarRequisicao(request: Request): Promise<Response> {
-  // Validar autenticacao
-  const apiKey = request.headers['x-api-key'];
-  if (!apiKey) throw new UnauthorizedError();
-  if (apiKey !== process.env.API_KEY) throw new UnauthorizedError();
+```python
+# RUIM - Funcao faz muitas coisas
+async def processar_requisicao(request: Request) -> Response:
+    # Validar autenticacao
+    api_key = request.headers.get("x-api-key")
+    if not api_key:
+        raise HTTPException(status_code=401)
+    if api_key != settings.API_KEY:
+        raise HTTPException(status_code=401)
 
-  // Buscar dados
-  const connection = await oracledb.getConnection();
-  const result = await connection.execute('SELECT ...');
-  await connection.close();
+    # Buscar dados
+    async with get_connection() as conn:
+        result = await conn.execute(text("SELECT ..."))
+        rows = result.fetchall()
 
-  // Processar dados
-  const interrupcoes = result.rows.map(row => ({
-    id: row[0],
-    tipo: row[1] ? 'PROGRAMADA' : 'NAO_PROGRAMADA',
-    ucs: row[2]
-  }));
+    # Processar dados
+    interrupcoes = [
+        {"id": row[0], "tipo": "PROGRAMADA" if row[1] else "NAO_PROGRAMADA"}
+        for row in rows
+    ]
 
-  // Agregar
-  const agregadas = new Map();
-  for (const i of interrupcoes) {
-    // logica de agregacao...
-  }
+    # Agregar
+    agregadas = {}
+    for i in interrupcoes:
+        # logica de agregacao...
+        pass
 
-  // Formatar resposta
-  return {
-    idcStatusRequisicao: 1,
-    listaInterrupcoes: Array.from(agregadas.values())
-  };
-}
+    # Formatar resposta
+    return {
+        "idcStatusRequisicao": 1,
+        "listaInterrupcoes": list(agregadas.values()),
+    }
 
-// BOM - Cada funcao faz uma coisa
-async function processarRequisicao(request: Request): Promise<Response> {
-  await this.authMiddleware.validar(request);
-  const interrupcoes = await this.repository.findAtivas();
-  const agregadas = this.aggregator.agregar(interrupcoes);
-  return this.formatter.formatarResposta(agregadas);
-}
+
+# BOM - Cada funcao faz uma coisa
+async def processar_requisicao(request: Request) -> Response:
+    await self.auth_middleware.validar(request)
+    interrupcoes = await self.repository.buscar_ativas()
+    agregadas = self.aggregator.agregar(interrupcoes)
+    return self.formatter.formatar_resposta(agregadas)
 ```
 
 ### Um Nivel de Abstracao por Funcao
 
-```typescript
-// BOM - Mesmo nivel de abstracao
-class GetInterrupcoesAtivasUseCase {
-  async execute(): Promise<Result<InterrupcaoAgregada[]>> {
-    const cacheado = await this.tentarBuscarDoCache();
-    if (cacheado) return cacheado;
+```python
+# BOM - Mesmo nivel de abstracao
+class GetInterrupcoesAtivasUseCase:
+    async def execute(self) -> Result[list[InterrupcaoAgregada]]:
+        cacheado = await self._tentar_buscar_do_cache()
+        if cacheado:
+            return cacheado
 
-    const dados = await this.buscarDoBanco();
-    const agregados = this.agregar(dados);
-    await this.salvarNoCache(agregados);
+        dados = await self._buscar_do_banco()
+        agregados = self._agregar(dados)
+        await self._salvar_no_cache(agregados)
 
-    return Result.ok(agregados);
-  }
+        return Result.ok(agregados)
 
-  private async tentarBuscarDoCache(): Promise<InterrupcaoAgregada[] | null> {
-    return this.cache.get('interrupcoes:ativas');
-  }
+    async def _tentar_buscar_do_cache(self) -> list[InterrupcaoAgregada] | None:
+        return await self._cache.get("interrupcoes:ativas")
 
-  private async buscarDoBanco(): Promise<Interrupcao[]> {
-    return this.repository.findAtivas();
-  }
+    async def _buscar_do_banco(self) -> list[Interrupcao]:
+        return await self._repository.buscar_ativas()
 
-  private agregar(interrupcoes: Interrupcao[]): InterrupcaoAgregada[] {
-    return this.aggregatorService.agregar(interrupcoes);
-  }
+    def _agregar(self, interrupcoes: list[Interrupcao]) -> list[InterrupcaoAgregada]:
+        return self._aggregator_service.agregar(interrupcoes)
 
-  private async salvarNoCache(dados: InterrupcaoAgregada[]): Promise<void> {
-    await this.cache.set('interrupcoes:ativas', dados, this.ttlEmSegundos);
-  }
-}
+    async def _salvar_no_cache(self, dados: list[InterrupcaoAgregada]) -> None:
+        await self._cache.set("interrupcoes:ativas", dados, self._ttl_em_segundos)
 ```
 
 ### Poucos Argumentos
 
-```typescript
-// RUIM - Muitos argumentos
-function criarInterrupcao(
-  id: number,
-  tipo: string,
-  municipio: number,
-  conjunto: number,
-  ucs: number,
-  dataInicio: Date,
-  dataFim: Date | null,
-  ativa: boolean
-): Interrupcao { }
+```python
+# RUIM - Muitos argumentos
+def criar_interrupcao(
+    id: int,
+    tipo: str,
+    municipio: int,
+    conjunto: int,
+    ucs: int,
+    data_inicio: datetime,
+    data_fim: datetime | None,
+    ativa: bool,
+) -> Interrupcao:
+    pass
 
-// BOM - Objeto de parametros
-interface CriarInterrupcaoParams {
-  id: number;
-  tipo: TipoInterrupcao;
-  municipio: CodigoIBGE;
-  conjunto: number;
-  ucsAfetadas: number;
-  dataInicio: Date;
-  dataFim?: Date;
-}
 
-function criarInterrupcao(params: CriarInterrupcaoParams): Interrupcao { }
+# BOM - Dataclass para parametros
+@dataclass
+class CriarInterrupcaoParams:
+    id: int
+    tipo: TipoInterrupcao
+    municipio: CodigoIBGE
+    conjunto: int
+    ucs_afetadas: int
+    data_inicio: datetime
+    data_fim: datetime | None = None
 
-// Uso
-const interrupcao = criarInterrupcao({
-  id: 12345,
-  tipo: TipoInterrupcao.PROGRAMADA,
-  municipio: CodigoIBGE.create(1400100).getValue(),
-  conjunto: 1,
-  ucsAfetadas: 150,
-  dataInicio: new Date()
-});
+
+def criar_interrupcao(params: CriarInterrupcaoParams) -> Interrupcao:
+    pass
+
+
+# Uso
+interrupcao = criar_interrupcao(
+    CriarInterrupcaoParams(
+        id=12345,
+        tipo=TipoInterrupcao.PROGRAMADA,
+        municipio=CodigoIBGE.create("1400100").value,
+        conjunto=1,
+        ucs_afetadas=150,
+        data_inicio=datetime.now(),
+    )
+)
 ```
 
 ---
@@ -190,47 +206,58 @@ const interrupcao = criarInterrupcao({
 
 ### Comentarios que Evitar
 
-```typescript
-// RUIM - Comentario obvio
-// Incrementa contador
-contador++;
+```python
+# RUIM - Comentario obvio
+# Incrementa contador
+contador += 1
 
-// RUIM - Comentario desatualizado
-// Retorna lista de interrupcoes ativas
-// TODO: adicionar filtro por data
-function findAtivas(): Interrupcao[] { }
+# RUIM - Comentario desatualizado
+# Retorna lista de interrupcoes ativas
+# TODO: adicionar filtro por data
+def buscar_ativas() -> list[Interrupcao]:
+    pass
 
-// RUIM - Comentario ao inves de codigo claro
-// Verifica se a interrupcao e programada checando
-// se o PLAN_ID e diferente de null
-if (planId !== null) { }
+# RUIM - Comentario ao inves de codigo claro
+# Verifica se a interrupcao e programada checando
+# se o PLAN_ID e diferente de null
+if plan_id is not None:
+    pass
 ```
 
 ### Comentarios Aceitaveis
 
-```typescript
-// BOM - Explica regra de negocio complexa
-/**
- * Uma interrupcao e classificada como PROGRAMADA quando existe
- * um registro associado na tabela SWITCH_PLAN_TASKS.
- * Fonte: Oficio Circular 14/2025-SFE/ANEEL
- */
-static fromPlanId(planId: number | null): TipoInterrupcao {
-  return planId !== null
-    ? TipoInterrupcao.PROGRAMADA
-    : TipoInterrupcao.NAO_PROGRAMADA;
-}
+```python
+# BOM - Explica regra de negocio complexa
+def from_plan_id(plan_id: int | None) -> TipoInterrupcao:
+    """
+    Determina tipo de interrupcao baseado na existencia de PLAN_ID.
 
-// BOM - Documenta API publica
-/**
- * Busca todas as interrupcoes ativas no momento.
- * @returns Lista de interrupcoes com is_open = 'T'
- */
-async findAtivas(): Promise<Interrupcao[]> { }
+    Uma interrupcao e classificada como PROGRAMADA quando existe
+    um registro associado na tabela SWITCH_PLAN_TASKS.
 
-// BOM - Aviso importante
-// WARNING: DBLink pode ter latencia alta em horarios de pico
-const result = await this.pool.execute(query);
+    Fonte: Oficio Circular 14/2025-SFE/ANEEL
+    """
+    return (
+        TipoInterrupcao.PROGRAMADA
+        if plan_id is not None
+        else TipoInterrupcao.NAO_PROGRAMADA
+    )
+
+
+# BOM - Documenta API publica
+async def buscar_ativas(self) -> list[Interrupcao]:
+    """
+    Busca todas as interrupcoes ativas no momento.
+
+    Returns:
+        Lista de interrupcoes com is_open = 'T'
+    """
+    pass
+
+
+# BOM - Aviso importante
+# WARNING: DBLink pode ter latencia alta em horarios de pico
+result = await self._session.execute(text(query))
 ```
 
 ---
@@ -239,143 +266,155 @@ const result = await this.pool.execute(query);
 
 ### Formatacao Vertical
 
-```typescript
-// BOM - Agrupamento logico com espacamento
-export class GetInterrupcoesAtivasUseCase {
-  // Dependencias
-  private readonly repository: InterrupcaoRepository;
-  private readonly cache: CacheRepository;
-  private readonly aggregator: InterrupcaoAggregatorService;
+```python
+# BOM - Agrupamento logico com espacamento
+class GetInterrupcoesAtivasUseCase:
+    """Caso de uso para buscar interrupcoes ativas."""
 
-  // Configuracao
-  private readonly ttlCacheSegundos = 300;
-  private readonly cacheKey = 'interrupcoes:ativas';
+    # Dependencias
+    _repository: InterrupcaoRepository
+    _cache: CacheService
+    _aggregator: InterrupcaoAggregatorService
 
-  constructor(
-    repository: InterrupcaoRepository,
-    cache: CacheRepository,
-    aggregator: InterrupcaoAggregatorService
-  ) {
-    this.repository = repository;
-    this.cache = cache;
-    this.aggregator = aggregator;
-  }
+    # Configuracao
+    _ttl_cache_segundos: int = 300
+    _cache_key: str = "interrupcoes:ativas"
 
-  // Metodo principal
-  async execute(): Promise<Result<InterrupcaoAgregada[]>> {
-    const cached = await this.cache.get<InterrupcaoAgregada[]>(this.cacheKey);
-    if (cached) {
-      return Result.ok(cached);
-    }
+    def __init__(
+        self,
+        repository: InterrupcaoRepository,
+        cache: CacheService,
+        aggregator: InterrupcaoAggregatorService,
+    ) -> None:
+        self._repository = repository
+        self._cache = cache
+        self._aggregator = aggregator
 
-    const interrupcoes = await this.repository.findAtivas();
-    const agregadas = this.aggregator.agregar(interrupcoes);
+    # Metodo principal
+    async def execute(self) -> Result[list[InterrupcaoAgregada]]:
+        cached = await self._cache.get(self._cache_key)
+        if cached:
+            return Result.ok(cached)
 
-    await this.cache.set(this.cacheKey, agregadas, this.ttlCacheSegundos);
+        interrupcoes = await self._repository.buscar_ativas()
+        agregadas = self._aggregator.agregar(interrupcoes)
 
-    return Result.ok(agregadas);
-  }
-}
+        await self._cache.set(self._cache_key, agregadas, self._ttl_cache_segundos)
+
+        return Result.ok(agregadas)
 ```
 
 ### Formatacao Horizontal
 
-```typescript
-// BOM - Linhas nao muito longas (max ~100 caracteres)
-const interrupcaoAgregada = InterrupcaoAgregada.create({
-  idConjunto: conjunto,
-  municipio: CodigoIBGE.create(codigoIbge).getValue(),
-  qtdUcsAtendidas: totalUcs,
-  qtdProgramada: somaProgramada,
-  qtdNaoProgramada: somaNaoProgramada
-});
+```python
+# BOM - Linhas nao muito longas (max ~100 caracteres)
+interrupcao_agregada = InterrupcaoAgregada.create(
+    id_conjunto=conjunto,
+    municipio=CodigoIBGE.create(codigo_ibge).value,
+    qtd_ucs_atendidas=total_ucs,
+    qtd_programada=soma_programada,
+    qtd_nao_programada=soma_nao_programada,
+)
 
-// BOM - Query SQL formatada
-const query = `
-  SELECT
-    ae.num_1 AS id,
-    ae.NUM_CUST AS ucs_afetadas,
-    spt.PLAN_ID AS plan_id,
-    oc.conj AS conjunto,
-    iu.CD_UNIVERSO AS codigo_ibge
-  FROM INSERVICE.AGENCY_EVENT@DBLINK_INSERVICE ae
-  LEFT JOIN INSERVICE.SWITCH_PLAN_TASKS@DBLINK_INSERVICE spt
-    ON spt.OUTAGE_NUM = ae.num_1
-  INNER JOIN INSERVICE.OMS_CONNECTIVITY@DBLINK_INSERVICE oc
-    ON oc.mslink = ae.dev_id
-  INNER JOIN INDICADORES.IND_UNIVERSOS@DBLINK_INDICADORES iu
-    ON iu.ID_DISPOSITIVO = ae.dev_id
-    AND iu.CD_TIPO_UNIVERSO = 2
-  WHERE ae.is_open = 'T'
-    AND ae.ag_id = 370
-`;
+# BOM - Query SQL formatada
+query = """
+    SELECT
+        ae.num_1 AS id,
+        ae.NUM_CUST AS ucs_afetadas,
+        spt.PLAN_ID AS plan_id,
+        oc.conj AS conjunto,
+        iu.CD_UNIVERSO AS codigo_ibge
+    FROM INSERVICE.AGENCY_EVENT@DBLINK_INSERVICE ae
+    LEFT JOIN INSERVICE.SWITCH_PLAN_TASKS@DBLINK_INSERVICE spt
+        ON spt.OUTAGE_NUM = ae.num_1
+    INNER JOIN INSERVICE.OMS_CONNECTIVITY@DBLINK_INSERVICE oc
+        ON oc.mslink = ae.dev_id
+    INNER JOIN INDICADORES.IND_UNIVERSOS@DBLINK_INDICADORES iu
+        ON iu.ID_DISPOSITIVO = ae.dev_id
+        AND iu.CD_TIPO_UNIVERSO = 2
+    WHERE ae.is_open = 'T'
+        AND ae.ag_id = 370
+"""
 ```
 
 ---
 
 ## Tratamento de Erros
 
-### Use Exceptions, Nao Codigos de Retorno
+### Use Result Pattern, Nao Codigos de Retorno
 
-```typescript
-// RUIM - Codigo de retorno
-function findAtivas(): { success: boolean; data?: Interrupcao[]; error?: string } {
-  try {
-    const data = // buscar...
-    return { success: true, data };
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
-}
+```python
+# RUIM - Dicionario com status
+def buscar_ativas() -> dict:
+    try:
+        data = ...  # buscar
+        return {"success": True, "data": data}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
-// BOM - Result Pattern
-function findAtivas(): Promise<Result<Interrupcao[]>> {
-  // ...
-}
 
-// Uso
-const result = await repository.findAtivas();
-if (result.isFailure) {
-  logger.error('Falha ao buscar interrupcoes', { error: result.getError() });
-  return this.handleError(result.getError());
-}
-const interrupcoes = result.getValue();
+# BOM - Result Pattern
+from shared.domain.result import Result
+
+
+async def buscar_ativas(self) -> Result[list[Interrupcao]]:
+    try:
+        interrupcoes = await self._fetch_from_db()
+        return Result.ok(interrupcoes)
+    except DatabaseError as e:
+        return Result.fail(f"Erro ao buscar interrupcoes: {e}")
+
+
+# Uso
+result = await repository.buscar_ativas()
+if result.is_failure:
+    logger.error("Falha ao buscar interrupcoes", error=result.error)
+    return self._handle_error(result.error)
+
+interrupcoes = result.value
 ```
 
 ### Exceptions com Contexto
 
-```typescript
-// domain/errors/domain.errors.ts
-export class DomainError extends Error {
-  constructor(
-    message: string,
-    public readonly code: string,
-    public readonly context?: Record<string, unknown>
-  ) {
-    super(message);
-    this.name = 'DomainError';
-  }
-}
+```python
+# shared/domain/errors.py
+class DomainError(Exception):
+    """Erro base do dominio."""
 
-export class CodigoIbgeInvalidoError extends DomainError {
-  constructor(codigo: number) {
-    super(
-      `Codigo IBGE invalido: ${codigo}`,
-      'IBGE_INVALIDO',
-      { codigo, esperado: 'Codigo de 7 digitos de Roraima (14xxxxx)' }
-    );
-  }
-}
+    def __init__(
+        self,
+        message: str,
+        code: str,
+        context: dict | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.context = context or {}
 
-export class DatabaseConnectionError extends DomainError {
-  constructor(originalError: Error) {
-    super(
-      'Falha na conexao com banco de dados',
-      'DB_CONNECTION_ERROR',
-      { originalMessage: originalError.message }
-    );
-  }
-}
+
+class CodigoIbgeInvalidoError(DomainError):
+    """Erro quando codigo IBGE e invalido."""
+
+    def __init__(self, codigo: str) -> None:
+        super().__init__(
+            message=f"Codigo IBGE invalido: {codigo}",
+            code="IBGE_INVALIDO",
+            context={
+                "codigo": codigo,
+                "esperado": "Codigo de 7 digitos de Roraima (14xxxxx)",
+            },
+        )
+
+
+class DatabaseConnectionError(DomainError):
+    """Erro de conexao com banco de dados."""
+
+    def __init__(self, original_error: Exception) -> None:
+        super().__init__(
+            message="Falha na conexao com banco de dados",
+            code="DB_CONNECTION_ERROR",
+            context={"original_message": str(original_error)},
+        )
 ```
 
 ---
@@ -384,54 +423,74 @@ export class DatabaseConnectionError extends DomainError {
 
 ### Principio da Responsabilidade Unica
 
-```typescript
-// Uma classe, uma responsabilidade
-class InterrupcaoMapper {
-  // Responsabilidade: Converter entre camadas
-  toEntity(row: OracleRow): Interrupcao { }
-  toDTO(entity: Interrupcao): InterrupcaoDTO { }
-  toAneelResponse(dto: InterrupcaoDTO): AneelInterrupcaoItem { }
-}
+```python
+# Uma classe, uma responsabilidade
+class InterrupcaoMapper:
+    """Responsabilidade: Converter entre camadas."""
 
-class InterrupcaoValidator {
-  // Responsabilidade: Validar dados
-  validateCodigoIbge(codigo: number): Result<void> { }
-  validateUcsAfetadas(ucs: number): Result<void> { }
-}
+    def to_entity(self, row: tuple) -> Interrupcao:
+        ...
 
-class InterrupcaoAggregatorService {
-  // Responsabilidade: Agregar interrupcoes
-  agregar(interrupcoes: Interrupcao[]): InterrupcaoAgregada[] { }
-}
+    def to_dto(self, entity: Interrupcao) -> InterrupcaoDTO:
+        ...
+
+    def to_aneel_response(self, dto: InterrupcaoDTO) -> dict:
+        ...
+
+
+class InterrupcaoValidator:
+    """Responsabilidade: Validar dados."""
+
+    def validate_codigo_ibge(self, codigo: str) -> Result[None]:
+        ...
+
+    def validate_ucs_afetadas(self, ucs: int) -> Result[None]:
+        ...
+
+
+class InterrupcaoAggregatorService:
+    """Responsabilidade: Agregar interrupcoes."""
+
+    def agregar(self, interrupcoes: list[Interrupcao]) -> list[InterrupcaoAgregada]:
+        ...
 ```
 
 ### Coesao Alta
 
-```typescript
-// BOM - Todos os metodos usam os mesmos dados
-class CodigoIBGE {
-  private readonly _valor: number;
+```python
+# BOM - Todos os metodos usam os mesmos dados
+@dataclass(frozen=True)
+class CodigoIBGE:
+    """Value Object para codigo IBGE - alta coesao."""
 
-  static create(codigo: number): Result<CodigoIBGE> {
-    // usa _valor implicitamente
-  }
+    valor: str
 
-  get valor(): number {
-    return this._valor;
-  }
+    def __post_init__(self) -> None:
+        # usa self.valor
+        self._validate()
 
-  isRoraima(): boolean {
-    return this._valor >= 1400000 && this._valor <= 1499999;
-  }
+    def _validate(self) -> None:
+        # usa self.valor
+        if not self._is_valid():
+            raise ValueError(f"Codigo IBGE invalido: {self.valor}")
 
-  equals(other: CodigoIBGE): boolean {
-    return this._valor === other._valor;
-  }
+    def _is_valid(self) -> bool:
+        # usa self.valor
+        return len(self.valor) == 7 and self.valor.isdigit()
 
-  toString(): string {
-    return this._valor.toString();
-  }
-}
+    def is_roraima(self) -> bool:
+        # usa self.valor
+        return self.valor.startswith("14")
+
+    def __eq__(self, other: object) -> bool:
+        # usa self.valor
+        if not isinstance(other, CodigoIBGE):
+            return False
+        return self.valor == other.valor
+
+    def __str__(self) -> str:
+        # usa self.valor
+        return self.valor
 ```
 
 ---
@@ -456,7 +515,7 @@ class CodigoIBGE {
 - [ ] Codigo se auto-documenta
 - [ ] Comentarios explicam "por que", nao "o que"
 - [ ] Sem comentarios desatualizados
-- [ ] JSDoc apenas em APIs publicas
+- [ ] Docstrings apenas em APIs publicas
 
 ### Formatacao
 - [ ] Agrupamento logico
@@ -465,7 +524,7 @@ class CodigoIBGE {
 - [ ] Espacamento vertical apropriado
 
 ### Erros
-- [ ] Usa exceptions, nao codigos
+- [ ] Usa Result Pattern
 - [ ] Exceptions tem contexto
 - [ ] Erros sao logados
 - [ ] Recovery quando possivel
