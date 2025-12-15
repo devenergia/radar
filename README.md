@@ -87,9 +87,18 @@ radar/
 │   └── public/
 │
 ├── docs/                         # Documentacao
-│   ├── adr/                      # Architecture Decision Records
-│   ├── architecture/             # Diagramas
-│   └── development/              # Guias de desenvolvimento
+│   ├── design/                   # Design e arquitetura do sistema
+│   ├── analysis/                 # Analises e requisitos
+│   ├── api-specs/                # Especificacoes das APIs ANEEL
+│   ├── architecture/             # Documentacao tecnica de arquitetura
+│   ├── adr/                      # Architectural Decision Records
+│   ├── development/              # Guias de desenvolvimento
+│   ├── reports/                  # Relatorios de atividades
+│   └── official/                 # Documentos oficiais ANEEL (PDFs)
+│
+├── api/                          # Exemplos e especificacoes OpenAPI
+│   ├── specs/                    # OpenAPI YAML
+│   └── examples/                 # Requests HTTP e clientes
 │
 ├── pyproject.toml                # Configuracao Python
 └── .env.example                  # Exemplo de variaveis de ambiente
@@ -218,12 +227,18 @@ npm run format                # Formatacao
 
 ## Documentacao
 
-| Documento | Descricao |
+| Categoria | Descricao |
 |-----------|-----------|
-| [docs/api/](docs/api/) | Especificacao das APIs |
-| [docs/adr/](docs/adr/) | Decisoes de arquitetura |
-| [docs/architecture/](docs/architecture/) | Diagramas de arquitetura |
+| [docs/](docs/README.md) | **Indice completo da documentacao** |
+| [docs/design/](docs/design/) | Design e arquitetura do sistema |
+| [docs/analysis/](docs/analysis/) | Analises e requisitos |
+| [docs/api-specs/](docs/api-specs/) | Especificacoes das APIs ANEEL |
+| [docs/architecture/](docs/architecture/) | Documentacao tecnica de arquitetura |
+| [docs/adr/](docs/adr/) | Architectural Decision Records |
 | [docs/development/](docs/development/) | Guias de desenvolvimento |
+| [docs/reports/](docs/reports/) | Relatorios de atividades |
+| [docs/official/](docs/official/) | Documentos oficiais ANEEL (PDFs) |
+| [api/](api/) | Exemplos OpenAPI, requests HTTP e clientes |
 
 ## Arquitetura
 
