@@ -93,9 +93,16 @@ htmlcov/
 # -----------------------------------------------------------------------------
 .idea/
 .vscode/
-.claude/
 *.swp
 *.swo
+
+# -----------------------------------------------------------------------------
+# Claude Code
+# -----------------------------------------------------------------------------
+# Manter .claude/ no repo para compartilhar comandos e regras
+# Apenas ignorar configuracoes locais
+.claude/settings.local.json
+CLAUDE.local.md
 *~
 .project
 .classpath
