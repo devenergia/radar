@@ -59,71 +59,106 @@ Implementaremos **cache em memória** com TTL (Time To Live) configurável.
 
 ### Implementação
 
-```typescript
-// src/infrastructure/cache/memory-cache.ts
+```python
+# app/infrastructure/cache/memory_cache.py
 
-export interface CacheConfig {
-  ttlSeconds: number;
-  maxItems: number;
-}
+import time
+from typing import TypeVar, Generic, Optional, Dict
+from dataclasses import dataclass
+from threading import Lock
 
-export interface CacheItem<T> {
-  data: T;
-  expiresAt: number;
-}
+T = TypeVar('T')
 
-export class MemoryCache<T> {
-  private cache: Map<string, CacheItem<T>> = new Map();
-  private readonly config: CacheConfig;
+@dataclass
+class CacheConfig:
+    """Configuração de cache"""
+    ttl_seconds: int
+    max_items: int
 
-  constructor(config: CacheConfig) {
-    this.config = config;
-  }
 
-  get(key: string): T | null {
-    const item = this.cache.get(key);
+@dataclass
+class CacheItem(Generic[T]):
+    """Item de cache com expiração"""
+    data: T
+    expires_at: float
 
-    if (!item) {
-      return null;
-    }
 
-    if (Date.now() > item.expiresAt) {
-      this.cache.delete(key);
-      return null;
-    }
+class MemoryCache(Generic[T]):
+    """Cache em memória com TTL"""
 
-    return item.data;
-  }
+    def __init__(self, config: CacheConfig):
+        self.config = config
+        self._cache: Dict[str, CacheItem[T]] = {}
+        self._lock = Lock()
 
-  set(key: string, data: T): void {
-    // Limpar itens expirados se atingir limite
-    if (this.cache.size >= this.config.maxItems) {
-      this.cleanup();
-    }
+    def get(self, key: str) -> Optional[T]:
+        """Retorna item do cache se existir e não estiver expirado"""
+        with self._lock:
+            item = self._cache.get(key)
 
-    this.cache.set(key, {
-      data,
-      expiresAt: Date.now() + (this.config.ttlSeconds * 1000),
-    });
-  }
+            if item is None:
+                return None
 
-  invalidate(key: string): void {
-    this.cache.delete(key);
-  }
+            # Verificar se expirou
+            if time.time() > item.expires_at:
+                del self._cache[key]
+                return None
 
-  invalidateAll(): void {
-    this.cache.clear();
-  }
+            return item.data
 
-  private cleanup(): void {
-    const now = Date.now();
-    for (const [key, item] of this.cache) {
-      if (now > item.expiresAt) {
-        this.cache.delete(key);
-      }
-    }
-  }
-}
+    def set(self, key: str, data: T) -> None:
+        """Armazena item no cache"""
+        with self._lock:
+            # Limpar itens expirados se atingir limite
+            if len(self._cache) >= self.config.max_items:
+                self._cleanup()
+
+            # Adicionar novo item
+            self._cache[key] = CacheItem(
+                data=data,
+                expires_at=time.time() + self.config.ttl_seconds
+            )
+
+    def invalidate(self, key: str) -> None:
+        """Remove item específico do cache"""
+        with self._lock:
+            self._cache.pop(key, None)
+
+    def invalidate_all(self) -> None:
+        """Limpa todo o cache"""
+        with self._lock:
+            self._cache.clear()
+
+    def _cleanup(self) -> None:
+        """Remove itens expirados do cache"""
+        now = time.time()
+        expired_keys = [
+            key for key, item in self._cache.items()
+            if now > item.expires_at
+        ]
+        for key in expired_keys:
+            del self._cache[key]
+
+    def size(self) -> int:
+        """Retorna quantidade de itens no cache"""
+        return len(self._cache)
+
+    def stats(self) -> Dict[str, int]:
+        """Retorna estatísticas do cache"""
+        with self._lock:
+            now = time.time()
+            active = sum(
+                1 for item in self._cache.values()
+                if now <= item.expires_at
+            )
+            expired = len(self._cache) - active
+
+            return {
+                "total_items": len(self._cache),
+                "active_items": active,
+                "expired_items": expired,
+                "max_items": self.config.max_items
+            }
 ```
 
 ### Estratégia de Cache por Endpoint
@@ -137,53 +172,202 @@ export class MemoryCache<T> {
 
 ### Cache Key Strategy
 
-```typescript
-// Chave de cache baseada em endpoint + parâmetros
-function generateCacheKey(endpoint: string, params: Record<string, string>): string {
-  const sortedParams = Object.entries(params)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k}=${v}`)
-    .join('&');
+```python
+# app/infrastructure/cache/cache_key.py
 
-  return `${endpoint}:${sortedParams || 'default'}`;
-}
+from typing import Dict, Any
 
-// Exemplos:
-// /interrupcoes -> "interrupcoes:default"
-// /interrupcoes?dthRecuperacao=10/12/2025 14:30 -> "interrupcoes:dthRecuperacao=10/12/2025 14:30"
+def generate_cache_key(endpoint: str, params: Dict[str, Any]) -> str:
+    """
+    Gera chave de cache baseada em endpoint + parâmetros
+
+    Args:
+        endpoint: Caminho do endpoint
+        params: Parâmetros da requisição
+
+    Returns:
+        Chave de cache única
+    """
+    if not params:
+        return f"{endpoint}:default"
+
+    # Ordenar parâmetros para garantir consistência
+    sorted_params = sorted(params.items())
+    params_str = "&".join(f"{k}={v}" for k, v in sorted_params)
+
+    return f"{endpoint}:{params_str}"
+
+
+# Exemplos:
+# /interrupcoes -> "interrupcoes:default"
+# /interrupcoes?dthRecuperacao=10/12/2025 14:30
+#   -> "interrupcoes:dthRecuperacao=10/12/2025 14:30"
+```
+
+### Decorator para Cache
+
+```python
+# app/infrastructure/cache/cache_decorator.py
+
+from functools import wraps
+from typing import Callable, TypeVar, Any
+from app.infrastructure.cache.memory_cache import MemoryCache
+from app.infrastructure.cache.cache_key import generate_cache_key
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
+T = TypeVar('T')
+
+def cached(
+    cache: MemoryCache,
+    key_prefix: str,
+    ttl_seconds: Optional[int] = None
+):
+    """
+    Decorator para cachear resultado de funções
+
+    Args:
+        cache: Instância do cache
+        key_prefix: Prefixo da chave de cache
+        ttl_seconds: TTL customizado (opcional)
+    """
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Gerar chave de cache
+            cache_key = generate_cache_key(key_prefix, kwargs)
+
+            # Tentar buscar do cache
+            cached_data = cache.get(cache_key)
+            if cached_data is not None:
+                logger.debug("Cache hit", key=cache_key)
+                return cached_data
+
+            # Cache miss - executar função
+            logger.debug("Cache miss", key=cache_key)
+            result = await func(*args, **kwargs)
+
+            # Armazenar no cache
+            cache.set(cache_key, result)
+
+            return result
+
+        return wrapper
+    return decorator
+
+
+# Exemplo de uso
+from app.infrastructure.cache import cache_instance
+
+@cached(cache_instance, key_prefix="interrupcoes", ttl_seconds=300)
+async def get_interrupcoes_ativas(params: dict):
+    # Lógica de busca
+    ...
 ```
 
 ### Stale-While-Revalidate (Opcional)
 
-```typescript
-// Para alta disponibilidade, servir dados stale enquanto revalida
-async function getWithStaleRevalidate<T>(
-  key: string,
-  fetcher: () => Promise<T>,
-  cache: MemoryCache<T>,
-  staleWhileRevalidateSeconds: number
-): Promise<T> {
-  const cached = cache.get(key);
+```python
+# app/infrastructure/cache/stale_while_revalidate.py
 
-  if (cached) {
-    return cached;
-  }
+from typing import TypeVar, Callable, Optional
+import asyncio
+from app.infrastructure.cache.memory_cache import MemoryCache
+from app.core.logging import get_logger
 
-  // Tentar buscar dados frescos
-  try {
-    const fresh = await fetcher();
-    cache.set(key, fresh);
-    return fresh;
-  } catch (error) {
-    // Se falhar, tentar usar dados stale (se houver)
-    const stale = cache.getStale(key, staleWhileRevalidateSeconds);
-    if (stale) {
-      // Log warning sobre dados stale
-      return stale;
-    }
-    throw error;
-  }
-}
+logger = get_logger(__name__)
+T = TypeVar('T')
+
+async def get_with_stale_revalidate(
+    key: str,
+    fetcher: Callable[[], T],
+    cache: MemoryCache[T],
+    stale_while_revalidate_seconds: int
+) -> T:
+    """
+    Para alta disponibilidade, servir dados stale enquanto revalida
+
+    Args:
+        key: Chave de cache
+        fetcher: Função para buscar dados frescos
+        cache: Instância de cache
+        stale_while_revalidate_seconds: Tempo que dados stale são aceitáveis
+
+    Returns:
+        Dados (frescos ou stale)
+    """
+    # Tentar cache normal
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
+    # Cache miss - tentar buscar dados frescos
+    try:
+        fresh = await fetcher()
+        cache.set(key, fresh)
+        return fresh
+    except Exception as e:
+        logger.warning(
+            "Erro ao buscar dados frescos",
+            error=str(e),
+            key=key
+        )
+
+        # Se falhar, tentar usar dados stale (se houver)
+        stale = cache._get_stale(key, stale_while_revalidate_seconds)
+        if stale is not None:
+            logger.warning(
+                "Usando dados stale",
+                key=key,
+                age_seconds=stale_while_revalidate_seconds
+            )
+            return stale
+
+        # Sem dados stale disponíveis, propagar erro
+        raise
+```
+
+### Integração com FastAPI
+
+```python
+# app/infrastructure/cache/__init__.py
+
+from app.infrastructure.cache.memory_cache import MemoryCache, CacheConfig
+from app.core.config import settings
+
+# Instância global de cache
+cache_instance = MemoryCache(
+    config=CacheConfig(
+        ttl_seconds=settings.CACHE_TTL_SECONDS,
+        max_items=settings.CACHE_MAX_ITEMS
+    )
+)
+
+def get_cache() -> MemoryCache:
+    """Dependency para injeção de cache"""
+    return cache_instance
+
+
+# Endpoint para limpar cache manualmente
+from fastapi import APIRouter, Depends
+
+router = APIRouter()
+
+@router.post("/cache/invalidate")
+async def invalidate_cache(
+    cache: MemoryCache = Depends(get_cache)
+):
+    """Endpoint para invalidar todo o cache"""
+    cache.invalidate_all()
+    return {"message": "Cache invalidado com sucesso"}
+
+
+@router.get("/cache/stats")
+async def cache_stats(
+    cache: MemoryCache = Depends(get_cache)
+):
+    """Endpoint para obter estatísticas do cache"""
+    return cache.stats()
 ```
 
 ## Consequências
@@ -194,6 +378,7 @@ async function getWithStaleRevalidate<T>(
 - **Resiliência**: Pode servir dados em cache se DB estiver lento
 - **Economia**: Menos queries aos sistemas fonte
 - **Simplicidade**: Cache em memória é simples de implementar
+- **Thread-Safe**: Uso de locks para operações concorrentes
 
 ### Negativas
 
@@ -229,6 +414,22 @@ Consultar banco em toda requisição.
 
 ## Configuração
 
+```python
+# app/core/config.py
+
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    # Cache
+    CACHE_ENABLED: bool = True
+    CACHE_TTL_SECONDS: int = 300  # 5 minutos
+    CACHE_MAX_ITEMS: int = 100
+    CACHE_STALE_WHILE_REVALIDATE_SECONDS: int = 600  # 10 minutos
+
+    class Config:
+        env_file = ".env"
+```
+
 ```bash
 # .env
 CACHE_ENABLED=true
@@ -241,3 +442,4 @@ CACHE_STALE_WHILE_REVALIDATE_SECONDS=600
 
 - [Caching Strategies](https://docs.aws.amazon.com/whitepapers/latest/database-caching-strategies-using-redis/caching-patterns.html)
 - [Stale-While-Revalidate](https://web.dev/stale-while-revalidate/)
+- [Python Threading](https://docs.python.org/3/library/threading.html)

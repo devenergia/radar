@@ -12,8 +12,8 @@ ADRs são documentos curtos que capturam decisões arquiteturais importantes jun
 |-----|--------|--------|------|
 | [ADR-001](./ADR-001-arquitetura-hexagonal.md) | Adoção de Arquitetura Hexagonal | Aceito | 2025-12-12 |
 | [ADR-002](./ADR-002-banco-dados-oracle.md) | Banco de Dados Oracle com DBLinks | Aceito | 2025-12-12 |
-| [ADR-003](./ADR-003-linguagem-typescript.md) | TypeScript como Linguagem Principal | Aceito | 2025-12-12 |
-| [ADR-004](./ADR-004-framework-fastify.md) | Fastify como Framework HTTP | Aceito | 2025-12-12 |
+| [ADR-003](./ADR-003-linguagem-python.md) | Python como Linguagem Principal | Aceito | 2025-12-15 |
+| [ADR-004](./ADR-004-framework-fastapi.md) | FastAPI como Framework HTTP | Aceito | 2025-12-15 |
 | [ADR-005](./ADR-005-estrategia-testes.md) | Estratégia de Testes (TDD) | Aceito | 2025-12-12 |
 | [ADR-006](./ADR-006-autenticacao-api-key.md) | Autenticação via API Key | Aceito | 2025-12-12 |
 | [ADR-007](./ADR-007-padrao-resposta-aneel.md) | Padrão de Resposta ANEEL | Aceito | 2025-12-12 |

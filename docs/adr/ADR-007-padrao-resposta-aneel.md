@@ -20,134 +20,220 @@ Implementaremos **exatamente** o padrão de resposta definido pela ANEEL, sem mo
 
 Todas as APIs seguem a mesma estrutura base:
 
-```typescript
-interface BaseResponse {
-  idcStatusRequisicao: 1 | 2;           // 1 = Sucesso, 2 = Erro
-  emailIndisponibilidade: string;        // Email para contato
-  mensagem: string;                      // Vazio se sucesso, erro se falha
-}
+```python
+# app/domain/schemas/base.py
+
+from pydantic import BaseModel, Field
+from typing import Literal
+
+class BaseResponse(BaseModel):
+    """Estrutura base de resposta ANEEL"""
+    idc_status_requisicao: Literal[1, 2] = Field(
+        ...,
+        alias="idcStatusRequisicao",
+        description="1 = Sucesso, 2 = Erro"
+    )
+    email_indisponibilidade: str = Field(
+        ...,
+        alias="emailIndisponibilidade",
+        max_length=50,
+        description="Email para contato"
+    )
+    mensagem: str = Field(
+        default="",
+        description="Vazio se sucesso, mensagem de erro se falha"
+    )
+
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {
+            "example": {
+                "idcStatusRequisicao": 1,
+                "emailIndisponibilidade": "radar@roraimaenergia.com.br",
+                "mensagem": ""
+            }
+        }
 ```
 
 ### API 1 - Interrupções Ativas
 
-```typescript
-interface InterrupcaoFornecimentoItem {
-  ideConjuntoUnidadeConsumidora: number; // Código do conjunto
-  ideMunicipio: number;                   // IBGE 7 dígitos
-  qtdUCsAtendidas: number;                // Total UCs no conjunto
-  qtdOcorrenciaProgramada: number;        // UCs com interrupção programada
-  qtdOcorrenciaNaoProgramada: number;     // UCs com interrupção não programada
-}
+```python
+# app/domain/schemas/interrupcao.py
 
-interface InterrupcoesAtivasResponse extends BaseResponse {
-  interrupcaoFornecimento: InterrupcaoFornecimentoItem[];
-}
+from typing import List
+from pydantic import BaseModel, Field
+
+class InterrupcaoFornecimentoItem(BaseModel):
+    """Item de interrupção de fornecimento"""
+    ide_conjunto_unidade_consumidora: int = Field(
+        ...,
+        alias="ideConjuntoUnidadeConsumidora",
+        ge=1,
+        description="Código do conjunto"
+    )
+    ide_municipio: int = Field(
+        ...,
+        alias="ideMunicipio",
+        ge=1000000,
+        le=9999999,
+        description="Código IBGE 7 dígitos"
+    )
+    qtd_ucs_atendidas: int = Field(
+        ...,
+        alias="qtdUCsAtendidas",
+        ge=0,
+        description="Total de UCs no conjunto"
+    )
+    qtd_ocorrencia_programada: int = Field(
+        ...,
+        alias="qtdOcorrenciaProgramada",
+        ge=0,
+        description="UCs com interrupção programada"
+    )
+    qtd_ocorrencia_nao_programada: int = Field(
+        ...,
+        alias="qtdOcorrenciaNaoProgramada",
+        ge=0,
+        description="UCs com interrupção não programada"
+    )
+
+    class Config:
+        populate_by_name = True
+
+
+class InterrupcoesAtivasResponse(BaseResponse):
+    """Resposta da API de interrupções ativas"""
+    interrupcao_fornecimento: List[InterrupcaoFornecimentoItem] = Field(
+        default_factory=list,
+        alias="interrupcaoFornecimento"
+    )
+
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {
+            "example": {
+                "idcStatusRequisicao": 1,
+                "emailIndisponibilidade": "radar@roraimaenergia.com.br",
+                "mensagem": "",
+                "interrupcaoFornecimento": [
+                    {
+                        "ideConjuntoUnidadeConsumidora": 1001,
+                        "ideMunicipio": 1400100,
+                        "qtdUCsAtendidas": 1500,
+                        "qtdOcorrenciaProgramada": 100,
+                        "qtdOcorrenciaNaoProgramada": 0
+                    }
+                ]
+            }
+        }
 ```
 
 ### API 2 - Dados da Demanda
 
-```typescript
-interface DadosDemandaItem {
-  // Campos conforme especificação
-}
+```python
+# app/domain/schemas/demanda.py
 
-interface DadosDemandaResponse extends BaseResponse {
-  dadosDemanda: DadosDemandaItem[];
-}
+from typing import List
+from pydantic import BaseModel, Field
+
+class DadosDemandaItem(BaseModel):
+    """Item de dados de demanda"""
+    # Campos conforme especificação ANEEL
+    ...
+
+class DadosDemandaResponse(BaseResponse):
+    """Resposta da API de dados de demanda"""
+    dados_demanda: List[DadosDemandaItem] = Field(
+        default_factory=list,
+        alias="dadosDemanda"
+    )
+
+    class Config:
+        populate_by_name = True
 ```
 
 ### Mapper de Resposta
 
-```typescript
-// src/application/mappers/response.mapper.ts
+```python
+# app/application/mappers/response_mapper.py
 
-import { InterrupcaoAgregada } from '@domain/entities';
+from typing import List
+from app.domain.entities import InterrupcaoAgregada
+from app.domain.schemas.interrupcao import (
+    InterrupcoesAtivasResponse,
+    InterrupcaoFornecimentoItem
+)
+from app.domain.schemas.base import BaseResponse
 
-export class ResponseMapper {
-  static toInterrupcoesAtivasResponse(
-    interrupcoes: InterrupcaoAgregada[],
-    email: string
-  ): InterrupcoesAtivasResponse {
-    return {
-      idcStatusRequisicao: 1,
-      emailIndisponibilidade: email,
-      mensagem: '',
-      interrupcaoFornecimento: interrupcoes.map(i => ({
-        ideConjuntoUnidadeConsumidora: i.idConjunto,
-        ideMunicipio: i.municipioIbge,
-        qtdUCsAtendidas: i.qtdUcsAtendidas,
-        qtdOcorrenciaProgramada: i.qtdUcsProgramada,
-        qtdOcorrenciaNaoProgramada: i.qtdUcsNaoProgramada,
-      })),
-    };
-  }
+class ResponseMapper:
+    """Mapper de entidades de domínio para respostas ANEEL"""
 
-  static toErrorResponse(
-    error: Error,
-    email: string
-  ): BaseResponse {
-    return {
-      idcStatusRequisicao: 2,
-      emailIndisponibilidade: email,
-      mensagem: error.message,
-    };
-  }
-}
+    @staticmethod
+    def to_interrupcoes_ativas_response(
+        interrupcoes: List[InterrupcaoAgregada],
+        email: str
+    ) -> InterrupcoesAtivasResponse:
+        """Mapeia lista de interrupções para resposta ANEEL"""
+        return InterrupcoesAtivasResponse(
+            idc_status_requisicao=1,
+            email_indisponibilidade=email,
+            mensagem="",
+            interrupcao_fornecimento=[
+                InterrupcaoFornecimentoItem(
+                    ide_conjunto_unidade_consumidora=i.id_conjunto,
+                    ide_municipio=i.municipio_ibge,
+                    qtd_ucs_atendidas=i.qtd_ucs_atendidas,
+                    qtd_ocorrencia_programada=i.qtd_ucs_programada,
+                    qtd_ocorrencia_nao_programada=i.qtd_ucs_nao_programada
+                )
+                for i in interrupcoes
+            ]
+        )
+
+    @staticmethod
+    def to_error_response(error: Exception, email: str) -> BaseResponse:
+        """Mapeia erro para resposta ANEEL"""
+        return BaseResponse(
+            idc_status_requisicao=2,
+            email_indisponibilidade=email,
+            mensagem=str(error)
+        )
 ```
 
-### Validação de Schema
+### Validação de Schema com Pydantic
 
-```typescript
-// JSON Schema para validação de resposta
-export const interrupcoesResponseSchema = {
-  type: 'object',
-  required: ['idcStatusRequisicao', 'emailIndisponibilidade', 'mensagem', 'interrupcaoFornecimento'],
-  properties: {
-    idcStatusRequisicao: {
-      type: 'integer',
-      enum: [1, 2],
-    },
-    emailIndisponibilidade: {
-      type: 'string',
-      maxLength: 50,
-      format: 'email',
-    },
-    mensagem: {
-      type: 'string',
-    },
-    interrupcaoFornecimento: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: [
-          'ideConjuntoUnidadeConsumidora',
-          'ideMunicipio',
-          'qtdUCsAtendidas',
-          'qtdOcorrenciaProgramada',
-          'qtdOcorrenciaNaoProgramada',
-        ],
-        properties: {
-          ideConjuntoUnidadeConsumidora: { type: 'integer', minimum: 1 },
-          ideMunicipio: { type: 'integer', minimum: 1000000, maximum: 9999999 },
-          qtdUCsAtendidas: { type: 'integer', minimum: 0 },
-          qtdOcorrenciaProgramada: { type: 'integer', minimum: 0 },
-          qtdOcorrenciaNaoProgramada: { type: 'integer', minimum: 0 },
-        },
-      },
-    },
-  },
-};
+Pydantic já fornece validação automática através dos modelos:
+
+```python
+# Exemplo de uso em rota
+from fastapi import APIRouter
+from app.domain.schemas.interrupcao import InterrupcoesAtivasResponse
+
+router = APIRouter()
+
+@router.get(
+    "/quantitativointerrupcoesativas",
+    response_model=InterrupcoesAtivasResponse,
+    response_model_by_alias=True  # Usa os alias (camelCase) na resposta
+)
+async def get_interrupcoes_ativas():
+    """
+    Endpoint que retorna interrupções ativas.
+    Pydantic garante que a resposta está conforme o schema.
+    """
+    # Lógica de negócio
+    ...
 ```
 
 ### Convenções de Nomenclatura
 
-| Convenção ANEEL | Implementação |
-|-----------------|---------------|
-| camelCase | Todos os campos em camelCase |
-| Prefixo `ide` | Identificadores (ideConjunto, ideMunicipio) |
-| Prefixo `idc` | Indicadores (idcStatusRequisicao) |
-| Prefixo `qtd` | Quantidades (qtdUCsAtendidas) |
-| Prefixo `dth` | Data/Hora (dthRecuperacao) |
+| Convenção ANEEL | Implementação Python | Alias Pydantic |
+|-----------------|---------------------|----------------|
+| camelCase | snake_case | camelCase |
+| Prefixo `ide` | Identificadores (ide_conjunto, ide_municipio) | ideConjunto, ideMunicipio |
+| Prefixo `idc` | Indicadores (idc_status_requisicao) | idcStatusRequisicao |
+| Prefixo `qtd` | Quantidades (qtd_ucs_atendidas) | qtdUCsAtendidas |
+| Prefixo `dth` | Data/Hora (dth_recuperacao) | dthRecuperacao |
 
 ## Consequências
 
@@ -155,8 +241,10 @@ export const interrupcoesResponseSchema = {
 
 - **Conformidade**: Atende exatamente à especificação da ANEEL
 - **Interoperabilidade**: Todas as distribuidoras usam mesmo formato
-- **Validação**: Schema permite validação automática
+- **Validação**: Pydantic valida automaticamente tipos e constraints
 - **Consistência**: Mesma estrutura para sucesso e erro
+- **Type Safety**: Tipos Python validados em tempo de execução
+- **Documentação Automática**: OpenAPI/Swagger gerado automaticamente
 
 ### Negativas
 
@@ -175,8 +263,48 @@ export const interrupcoesResponseSchema = {
 2. **SEMPRE** retornar `interrupcaoFornecimento: []` mesmo quando vazio
 3. **SEMPRE** usar HTTP 200 OK, status de erro vai no `idcStatusRequisicao`
 4. **NUNCA** incluir stack traces ou detalhes técnicos na `mensagem`
+5. **SEMPRE** usar `response_model_by_alias=True` para retornar camelCase
+
+## Exemplo de Teste
+
+```python
+# tests/unit/test_response_mapper.py
+
+import pytest
+from app.application.mappers.response_mapper import ResponseMapper
+from app.domain.entities import InterrupcaoAgregada
+
+def test_to_interrupcoes_ativas_response():
+    # Arrange
+    interrupcoes = [
+        InterrupcaoAgregada(
+            id_conjunto=1001,
+            municipio_ibge=1400100,
+            qtd_ucs_atendidas=1500,
+            qtd_ucs_programada=100,
+            qtd_ucs_nao_programada=0
+        )
+    ]
+
+    # Act
+    response = ResponseMapper.to_interrupcoes_ativas_response(
+        interrupcoes,
+        "radar@roraimaenergia.com.br"
+    )
+
+    # Assert
+    assert response.idc_status_requisicao == 1
+    assert response.mensagem == ""
+    assert len(response.interrupcao_fornecimento) == 1
+
+    # Validar que o JSON está em camelCase
+    json_data = response.model_dump(by_alias=True)
+    assert "idcStatusRequisicao" in json_data
+    assert "interrupcaoFornecimento" in json_data
+```
 
 ## Referências
 
 - Ofício Circular 14/2025-SFE/ANEEL V4 (23/10/2025)
 - Especificação JSON das APIs no ofício
+- [Pydantic Documentation](https://docs.pydantic.dev/)

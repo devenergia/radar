@@ -42,11 +42,12 @@ Adotaremos **Test-Driven Development (TDD)** como prática de desenvolvimento, c
 
 | Ferramenta | Uso |
 |------------|-----|
-| **Vitest** | Test runner e assertions |
-| **@fastify/inject** | Testes HTTP sem servidor real |
+| **pytest** | Test runner e assertions |
+| **pytest-asyncio** | Testes assíncronos |
+| **httpx** | Cliente HTTP para testes de API |
 | **testcontainers** | Banco Oracle para testes de integração |
-| **MSW** | Mock de APIs externas (se houver) |
-| **c8/istanbul** | Cobertura de código |
+| **respx** | Mock de APIs externas (se houver) |
+| **pytest-cov** | Cobertura de código |
 
 ### Estrutura de Testes
 
@@ -55,54 +56,65 @@ tests/
 ├── unit/
 │   ├── domain/
 │   │   ├── entities/
-│   │   │   └── interrupcao.entity.spec.ts
+│   │   │   └── test_interrupcao_entity.py
 │   │   └── services/
-│   │       └── calcular-tipo-interrupcao.spec.ts
+│   │       └── test_calcular_tipo_interrupcao.py
 │   ├── application/
-│   │   └── use-cases/
-│   │       └── get-interrupcoes-ativas.spec.ts
+│   │   └── use_cases/
+│   │       └── test_get_interrupcoes_ativas.py
 │   └── shared/
 │       └── utils/
-│           └── date-formatter.spec.ts
+│           └── test_date_formatter.py
 │
 ├── integration/
 │   ├── repositories/
-│   │   └── interrupcao.repository.spec.ts
+│   │   └── test_interrupcao_repository.py
 │   └── database/
-│       └── oracle-connection.spec.ts
+│       └── test_oracle_connection.py
 │
 └── e2e/
-    ├── interrupcoes.e2e.spec.ts
-    ├── demandas.e2e.spec.ts
-    └── health.e2e.spec.ts
+    ├── test_interrupcoes_e2e.py
+    ├── test_demandas_e2e.py
+    └── test_health_e2e.py
 ```
 
 ### Convenções de Nomenclatura
 
-```typescript
-// Arquivo: get-interrupcoes-ativas.spec.ts
+```python
+# Arquivo: test_get_interrupcoes_ativas.py
 
-describe('GetInterrupcoesAtivasUseCase', () => {
-  describe('execute', () => {
-    it('should return empty array when no interrupcoes are active', async () => {
-      // Arrange
-      // Act
-      // Assert
-    });
+import pytest
+from app.application.use_cases import GetInterrupcoesAtivasUseCase
 
-    it('should classify interrupcao as PROGRAMADA when PLAN_ID exists', async () => {
-      // ...
-    });
+class TestGetInterrupcoesAtivasUseCase:
+    """Testes para o caso de uso GetInterrupcoesAtivas"""
 
-    it('should return IBGE code from IND_UNIVERSOS', async () => {
-      // ...
-    });
+    @pytest.mark.asyncio
+    async def test_should_return_empty_list_when_no_interrupcoes_are_active(self):
+        # Arrange
+        use_case = GetInterrupcoesAtivasUseCase(mock_repository)
 
-    it('should throw when database connection fails', async () => {
-      // ...
-    });
-  });
-});
+        # Act
+        result = await use_case.execute()
+
+        # Assert
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_should_classify_interrupcao_as_programada_when_plan_id_exists(self):
+        # Arrange, Act, Assert
+        ...
+
+    @pytest.mark.asyncio
+    async def test_should_return_ibge_code_from_ind_universos(self):
+        # Arrange, Act, Assert
+        ...
+
+    @pytest.mark.asyncio
+    async def test_should_raise_when_database_connection_fails(self):
+        # Arrange, Act, Assert
+        with pytest.raises(DatabaseError):
+            await use_case.execute()
 ```
 
 ### Metas de Cobertura
@@ -114,41 +126,93 @@ describe('GetInterrupcoesAtivasUseCase', () => {
 | **Functions** | 85% |
 | **Lines** | 80% |
 
-### Configuração Vitest
+### Configuração Pytest
 
-```typescript
-// vitest.config.ts
-import { defineConfig } from 'vitest/config';
-import path from 'path';
+```python
+# pyproject.toml
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = """
+    -v
+    --strict-markers
+    --cov=app
+    --cov-report=term-missing
+    --cov-report=html
+    --cov-report=json
+    --cov-fail-under=80
+"""
 
-export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'node',
-    include: ['tests/**/*.spec.ts'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', 'dist/', 'tests/'],
-      thresholds: {
-        statements: 80,
-        branches: 75,
-        functions: 85,
-        lines: 80,
-      },
-    },
-    setupFiles: ['./tests/setup.ts'],
-  },
-  resolve: {
-    alias: {
-      '@domain': path.resolve(__dirname, './src/domain'),
-      '@application': path.resolve(__dirname, './src/application'),
-      '@infrastructure': path.resolve(__dirname, './src/infrastructure'),
-      '@interfaces': path.resolve(__dirname, './src/interfaces'),
-      '@shared': path.resolve(__dirname, './src/shared'),
-    },
-  },
-});
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "e2e: End-to-end tests",
+    "slow: Slow running tests",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+fail_under = 80
+precision = 2
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"
+```
+
+### Configuração conftest.py
+
+```python
+# tests/conftest.py
+
+import pytest
+from typing import AsyncGenerator
+from httpx import AsyncClient
+from app.main import app
+from app.infrastructure.database import get_db
+
+@pytest.fixture
+async def client() -> AsyncGenerator[AsyncClient, None]:
+    """Cliente HTTP para testes E2E"""
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
+
+@pytest.fixture
+async def db_session():
+    """Sessão de banco de dados para testes"""
+    # Setup
+    session = create_test_session()
+
+    yield session
+
+    # Teardown
+    await session.rollback()
+    await session.close()
+
+@pytest.fixture
+def mock_repository():
+    """Mock do repositório para testes unitários"""
+    from unittest.mock import AsyncMock
+    return AsyncMock()
 ```
 
 ## Ciclo TDD
@@ -224,4 +288,5 @@ Escrever testes depois do código.
 
 - Kent Beck - Test-Driven Development by Example
 - Martin Fowler - [Test Pyramid](https://martinfowler.com/articles/practical-test-pyramid.html)
-- [Vitest Documentation](https://vitest.dev/)
+- [Pytest Documentation](https://docs.pytest.org/)
+- [pytest-asyncio Documentation](https://pytest-asyncio.readthedocs.io/)

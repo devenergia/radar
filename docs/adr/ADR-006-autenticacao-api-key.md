@@ -45,66 +45,132 @@ Implementaremos autenticação via **API Key** no header `x-api-key`, conforme e
 
 ### Implementação do Middleware
 
-```typescript
-// src/interfaces/http/middlewares/auth.middleware.ts
+```python
+# app/infrastructure/http/middlewares/auth_middleware.py
 
-import { FastifyRequest, FastifyReply } from 'fastify';
-import { UnauthorizedError, ForbiddenError } from '@shared/errors';
+from typing import List
+from fastapi import Request, HTTPException, status
+from fastapi.security import APIKeyHeader
+from starlette.middleware.base import BaseHTTPMiddleware
+from app.shared.errors import UnauthorizedError, ForbiddenError
+from app.core.config import settings
 
-export interface AuthMiddlewareConfig {
-  apiKeys: string[];
-  ipWhitelist: string[];
-  ipWhitelistEnabled: boolean;
-}
+api_key_header = APIKeyHeader(name="x-api-key", auto_error=False)
 
-export function createAuthMiddleware(config: AuthMiddlewareConfig) {
-  return async (request: FastifyRequest, reply: FastifyReply) => {
-    // 1. Verificar IP (se habilitado)
-    if (config.ipWhitelistEnabled) {
-      const clientIp = getClientIp(request);
-      if (!config.ipWhitelist.includes(clientIp)) {
-        throw new ForbiddenError(`IP ${clientIp} não autorizado`);
-      }
-    }
+class AuthMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, api_keys: List[str], ip_whitelist: List[str],
+                 ip_whitelist_enabled: bool):
+        super().__init__(app)
+        self.api_keys = api_keys
+        self.ip_whitelist = ip_whitelist
+        self.ip_whitelist_enabled = ip_whitelist_enabled
 
-    // 2. Validar API Key
-    const apiKey = request.headers['x-api-key'];
+    async def dispatch(self, request: Request, call_next):
+        # 1. Verificar IP (se habilitado)
+        if self.ip_whitelist_enabled:
+            client_ip = self._get_client_ip(request)
+            if client_ip not in self.ip_whitelist:
+                raise ForbiddenError(f"IP {client_ip} não autorizado")
 
-    if (!apiKey) {
-      throw new UnauthorizedError('Header x-api-key é obrigatório');
-    }
+        # 2. Validar API Key
+        api_key = request.headers.get("x-api-key")
 
-    if (!config.apiKeys.includes(apiKey as string)) {
-      throw new UnauthorizedError('API Key inválida');
-    }
+        if not api_key:
+            raise UnauthorizedError("Header x-api-key é obrigatório")
 
-    // 3. Adicionar metadata ao request
-    request.auth = {
-      apiKey: maskApiKey(apiKey as string),
-      clientIp: getClientIp(request),
-      authenticatedAt: new Date(),
-    };
-  };
-}
+        if api_key not in self.api_keys:
+            raise UnauthorizedError("API Key inválida")
 
-function getClientIp(request: FastifyRequest): string {
-  return (
-    (request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-    request.headers['x-real-ip'] as string ||
-    request.ip
-  );
-}
+        # 3. Adicionar metadata ao request
+        request.state.auth = {
+            "api_key": self._mask_api_key(api_key),
+            "client_ip": self._get_client_ip(request),
+            "authenticated_at": datetime.now()
+        }
 
-function maskApiKey(apiKey: string): string {
-  if (apiKey.length <= 8) return '****';
-  return `${apiKey.slice(0, 4)}...${apiKey.slice(-4)}`;
-}
+        response = await call_next(request)
+        return response
+
+    def _get_client_ip(self, request: Request) -> str:
+        """Extrai o IP real do cliente considerando proxies"""
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+
+        real_ip = request.headers.get("x-real-ip")
+        if real_ip:
+            return real_ip
+
+        return request.client.host if request.client else "unknown"
+
+    def _mask_api_key(self, api_key: str) -> str:
+        """Mascara a API key para logs"""
+        if len(api_key) <= 8:
+            return "****"
+        return f"{api_key[:4]}...{api_key[-4:]}"
+
+
+# Dependency para uso em rotas específicas
+async def verify_api_key(api_key: str = api_key_header) -> str:
+    """Verifica API key em rotas específicas"""
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Header x-api-key é obrigatório"
+        )
+
+    if api_key not in settings.API_KEYS:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API Key inválida"
+        )
+
+    return api_key
 ```
 
 ### Configuração de API Keys
 
-```typescript
-// Variáveis de ambiente
+```python
+# app/core/config.py
+
+from pydantic_settings import BaseSettings
+from typing import List
+
+class Settings(BaseSettings):
+    # API Keys
+    API_KEY_ANEEL: str
+    API_KEYS_INTERNAL: str = ""
+
+    # IP Whitelist
+    IP_WHITELIST_ANEEL: str = ""
+    IP_WHITELIST_ENABLED: bool = True
+
+    @property
+    def API_KEYS(self) -> List[str]:
+        """Lista de todas as API keys válidas"""
+        keys = [self.API_KEY_ANEEL]
+        if self.API_KEYS_INTERNAL:
+            keys.extend(self.API_KEYS_INTERNAL.split(","))
+        return keys
+
+    @property
+    def IP_WHITELIST(self) -> List[str]:
+        """Lista de IPs autorizados"""
+        if not self.IP_WHITELIST_ANEEL:
+            return []
+        return [ip.strip() for ip in self.IP_WHITELIST_ANEEL.split(",")]
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
+settings = Settings()
+```
+
+### Variáveis de Ambiente
+
+```bash
+# .env
 API_KEY_ANEEL=chave-secreta-aneel-producao
 API_KEYS_INTERNAL=chave-interna-1,chave-interna-2
 IP_WHITELIST_ANEEL=200.193.x.x,200.193.y.y
@@ -146,7 +212,7 @@ IP_WHITELIST_ENABLED=true
 - **Conformidade ANEEL**: Segue exatamente a especificação do ofício
 - **Simplicidade**: Fácil de implementar e manter
 - **Stateless**: Não requer sessões ou tokens de refresh
-- **Performance**: Validação rápida (lookup em array)
+- **Performance**: Validação rápida (lookup em lista)
 - **Auditoria**: Fácil de logar qual API Key foi usada
 
 ### Negativas
@@ -188,3 +254,4 @@ Username/password codificados em Base64.
 
 - Ofício Circular 14/2025-SFE/ANEEL - Seção de Autenticação
 - OWASP API Security Top 10
+- [FastAPI Security](https://fastapi.tiangolo.com/tutorial/security/)
