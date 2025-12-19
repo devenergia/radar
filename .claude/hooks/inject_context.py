@@ -121,9 +121,9 @@ def detect_intent(prompt: str) -> list[str]:
 def main():
     try:
         input_data = json.load(sys.stdin)
-    except json.JSONDecodeError as e:
-        print(f"Erro ao ler JSON: {e}", file=sys.stderr)
-        sys.exit(1)
+    except json.JSONDecodeError:
+        # Se nao conseguir ler JSON, sair silenciosamente
+        sys.exit(0)
 
     prompt = input_data.get("prompt", "")
 
@@ -133,27 +133,24 @@ def main():
     intents = detect_intent(prompt)
 
     if not intents:
-        # Apenas adicionar timestamp como contexto basico
-        context = f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}]"
-        print(context)
+        # Sem intencoes detectadas - sair sem output
         sys.exit(0)
 
     # Construir contexto com lembretes
-    context_parts = [f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}]"]
+    context_parts = []
 
     for intent in intents[:2]:  # Limitar a 2 intencoes
         if intent in REMINDERS:
-            context_parts.append(f"\n📋 Lembretes para {intent.replace('_', ' ')}:")
+            context_parts.append(f"Lembretes para {intent.replace('_', ' ')}:")
             for reminder in REMINDERS[intent]:
-                context_parts.append(f"  • {reminder}")
+                context_parts.append(f"  - {reminder}")
 
-    output = {
-        "hookSpecificOutput": {
-            "hookEventName": "UserPromptSubmit",
+    if context_parts:
+        output = {
             "additionalContext": "\n".join(context_parts),
         }
-    }
-    print(json.dumps(output))
+        print(json.dumps(output))
+
     sys.exit(0)
 
 
