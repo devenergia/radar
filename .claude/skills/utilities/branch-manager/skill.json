@@ -1,0 +1,77 @@
+{
+  "name": "branch-manager",
+  "version": "1.0.0",
+  "description": "Gerencia branches Git (criar, merge, cleanup) seguindo nomenclatura RADAR",
+  "tier": "utilities",
+  "author": "RADAR Team",
+  "dependencies": [],
+  "input_schema": {
+    "action": {
+      "type": "string",
+      "required": true,
+      "enum": ["create", "merge", "cleanup", "status"],
+      "description": "Acao a executar na branch"
+    },
+    "taskId": {
+      "type": "string",
+      "required": false,
+      "pattern": "^RAD-[0-9]{3}$",
+      "description": "Task ID para nomenclatura da branch (required para create)"
+    },
+    "baseBranch": {
+      "type": "string",
+      "required": false,
+      "default": "main",
+      "description": "Branch base para criar nova branch (default: main)"
+    },
+    "targetBranch": {
+      "type": "string",
+      "required": false,
+      "description": "Branch destino para merge (required para action=merge)"
+    },
+    "branchType": {
+      "type": "string",
+      "required": false,
+      "enum": ["feature", "bugfix", "hotfix", "release"],
+      "default": "feature",
+      "description": "Tipo de branch a criar"
+    },
+    "description": {
+      "type": "string",
+      "required": false,
+      "description": "Descricao curta para nome da branch (kebab-case)"
+    }
+  },
+  "output_schema": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "error", "conflict"]
+    },
+    "branchName": "string",
+    "action": "string",
+    "baseBranch": "string",
+    "targetBranch": "string",
+    "conflicts": ["string"],
+    "commitHash": "string",
+    "message": "string",
+    "error": "string"
+  },
+  "usage": {
+    "example": "/branch-manager --action create --taskId RAD-100 --description entity-interrupcao",
+    "notes": [
+      "Nomenclatura: <type>/<taskId>-<description>",
+      "Exemplo: feature/RAD-100-entity-interrupcao",
+      "Valida se branch base existe antes de criar",
+      "Detecta conflitos em merge e retorna lista"
+    ]
+  },
+  "branch_naming": {
+    "pattern": "{type}/{taskId}-{description}",
+    "examples": [
+      "feature/RAD-100-entity-interrupcao",
+      "feature/RAD-105-oracle-connection",
+      "feature/RAD-112-fastapi-app",
+      "feature/RAD-122-api-key-auth"
+    ]
+  }
+}

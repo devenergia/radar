@@ -1,0 +1,79 @@
+{
+  "name": "commit-formatter",
+  "version": "1.0.0",
+  "description": "Formata e cria commits seguindo padroes RADAR (Conventional Commits)",
+  "tier": "utilities",
+  "author": "RADAR Team",
+  "dependencies": [],
+  "input_schema": {
+    "taskId": {
+      "type": "string",
+      "required": true,
+      "pattern": "^RAD-[0-9]{3}$",
+      "description": "Task ID no formato RAD-XXX"
+    },
+    "type": {
+      "type": "string",
+      "required": true,
+      "enum": ["feat", "fix", "test", "docs", "refactor", "perf", "chore"],
+      "description": "Tipo do commit (conventional commits)"
+    },
+    "scope": {
+      "type": "string",
+      "required": true,
+      "enum": ["api-interrupcoes", "domain", "infrastructure", "shared"],
+      "description": "Escopo do commit"
+    },
+    "message": {
+      "type": "string",
+      "required": true,
+      "minLength": 10,
+      "maxLength": 100,
+      "description": "Mensagem curta do commit (imperativo, sem ponto final)"
+    },
+    "changes": {
+      "type": "array",
+      "required": false,
+      "items": "string",
+      "description": "Lista de mudancas principais (bullets para corpo do commit)"
+    },
+    "metrics": {
+      "type": "object",
+      "required": false,
+      "properties": {
+        "coverage": "string",
+        "reviewScore": "number",
+        "filesChanged": "number"
+      }
+    }
+  },
+  "output_schema": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "error"]
+    },
+    "commitHash": "string",
+    "commitMessage": "string",
+    "branchName": "string",
+    "filesChanged": "number",
+    "error": "string"
+  },
+  "usage": {
+    "example": "/commit-formatter --taskId RAD-100 --type feat --scope domain --message 'implementa entidade Interrupcao'",
+    "notes": [
+      "Segue conventional commits (type(scope): message)",
+      "Sempre inclui 'Task: [taskId]' no rodape",
+      "Inclui metricas de coverage e review score",
+      "Adiciona flag [code-review-approved] se review passou"
+    ]
+  },
+  "commit_template": {
+    "format": "{type}({scope}): {message}\n\n{changes}\n\n[code-review-approved]\nTask: {taskId}\nCoverage: {coverage}\nReview Score: {reviewScore}/100",
+    "examples": [
+      "feat(domain): implementa entidade Interrupcao",
+      "test(domain): adiciona testes para CodigoIBGE",
+      "feat(infrastructure): configura conexao Oracle com DBLink",
+      "feat(api-interrupcoes): adiciona endpoint quantitativointerrupcoesativas"
+    ]
+  }
+}
