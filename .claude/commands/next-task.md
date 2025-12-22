@@ -9,40 +9,31 @@ Este comando busca a proxima task disponivel e executa o fluxo profissional de 1
 
 ## FLUXO OBRIGATORIO DE 15 PASSOS
 
-### PREPARACAO (Passos 1-3)
+---
+
+### PREPARACAO (Passos 1-4)
 
 #### Passo 1: Identificar Proxima Task
 
 ```bash
-# IMPORTANTE: Escolher projeto para buscar proxima task
-# Projetos disponiveis:
-# - api-interrupcoes (RAD-100 a RAD-130)
-# - mapa-interrupcoes (RAD-200 a RAD-230)
+# Projeto: api-interrupcoes (RAD-100 a RAD-130)
+# Ler EXECUTION_STATUS.md
+cat docs/tasks/api-interrupcoes/EXECUTION_STATUS.md
 
-# Se usuario especificou projeto via argumento:
-PROJECT="${1:-api-interrupcoes}"
-
-# Ler EXECUTION_STATUS.md do projeto
-cat docs/tasks/$PROJECT/EXECUTION_STATUS.md
-
-# Encontrar primeira task "PENDENTE" seguindo ordem de execucao
-grep "PENDENTE" docs/tasks/$PROJECT/EXECUTION_STATUS.md
+# Encontrar primeira task "PENDENTE"
+grep "PENDENTE" docs/tasks/api-interrupcoes/EXECUTION_STATUS.md
 
 # Verificar dependencias no INDEX.md
-cat docs/tasks/$PROJECT/INDEX.md
+cat docs/tasks/api-interrupcoes/INDEX.md
 ```
-
-**Detectar projeto automaticamente:**
-- Se branch atual contem `rad-1` -> api-interrupcoes
-- Se branch atual contem `rad-2` -> mapa-interrupcoes
 
 Se dependencia nao esta CONCLUIDO -> PARAR e informar
 
-#### Passo 2: Ler Documentacao
+#### Passo 2: Ler Documentacao da Task
 
 ```bash
-# Ler arquivo da task do projeto
-cat docs/tasks/$PROJECT/RAD-XXX.md
+# Ler arquivo da task
+cat docs/tasks/api-interrupcoes/RAD-XXX.md
 
 # Ler guias de desenvolvimento
 cat docs/development/01-clean-architecture.md
@@ -56,39 +47,41 @@ Validar presenca de:
 - [ ] Criterios de aceite
 - [ ] Dependencias listadas
 
-#### Passo 3: Selecionar Subagente Correto
+#### Passo 3: Criar Issue no GitHub
 
-| Tipo de Task | Subagente | Keywords |
-|--------------|-----------|----------|
-| Domain (Entities, VOs) | backend-architect | entity, value object, domain |
-| Oracle/DBLink | database-optimizer | oracle, repository, dblink, cache |
-| Use Cases | backend-architect | use case, service, aggregator |
-| FastAPI/Routes | backend-architect | fastapi, route, endpoint, schema |
-| Testes | test-engineer | test, pytest, coverage |
-| Seguranca | security-auditor | auth, rate limit, logging |
-| Frontend (React/Leaflet) | backend-architect | react, component, leaflet, frontend |
-| Deploy (NGINX/Docker) | backend-architect | nginx, docker, deploy |
+```bash
+gh issue create \
+  --title "feat(api-interrupcoes): RAD-XXX - {Titulo}" \
+  --body "## Descricao
+{descricao_da_task}
+
+## Criterios de Aceite
+{lista_de_ACs}
+
+## Arquivos Afetados
+{lista_arquivos}
+
+## Dependencias
+{deps_ou_nenhuma}
 
 ---
-
-### DESENVOLVIMENTO TDD (Passos 4-8)
+Task: RAD-XXX"
+```
 
 #### Passo 4: Criar Branch
 
 ```bash
-# Garantir que esta em main atualizado
-git checkout main
-git pull origin main
+# Garantir que esta em hm atualizado
+git checkout hm
+git pull origin hm
 
 # Criar branch seguindo padrao
-git checkout -b feature/rad-XXX-descricao-curta
+git checkout -b feat/rad-XXX/descricao-curta
 ```
 
-Convencoes:
-- `feat/` ou `feature/` - Nova funcionalidade
-- `fix/` - Correcao de bug
-- `test/` - Adicao de testes
-- `refactor/` - Refatoracao
+---
+
+### DESENVOLVIMENTO TDD (Passos 5-8)
 
 #### Passo 5: TDD RED - Escrever Testes que Falham
 
@@ -97,7 +90,7 @@ Convencoes:
 # 2. Escrever testes baseados nos Criterios de Aceite
 # 3. Executar testes - DEVEM FALHAR
 
-pytest tests/unit/domain/test_XXX.py -v
+"D:/Projeto Radar/venv/Scripts/pytest.exe" backend/tests/unit/... -v
 
 # Se passarem -> testes estao errados
 ```
@@ -109,7 +102,7 @@ pytest tests/unit/domain/test_XXX.py -v
 # 2. Nao adicionar features extras
 # 3. Nao otimizar prematuramente
 
-pytest tests/unit/domain/test_XXX.py -v
+"D:/Projeto Radar/venv/Scripts/pytest.exe" backend/tests/unit/... -v
 
 # DEVEM PASSAR
 ```
@@ -121,7 +114,7 @@ pytest tests/unit/domain/test_XXX.py -v
 # 2. Remover duplicacao
 # 3. Melhorar nomes e legibilidade
 
-pytest tests/unit/domain/test_XXX.py -v
+"D:/Projeto Radar/venv/Scripts/pytest.exe" backend/tests/unit/... -v
 
 # DEVEM CONTINUAR PASSANDO
 ```
@@ -129,8 +122,8 @@ pytest tests/unit/domain/test_XXX.py -v
 #### Passo 8: Verificar Coverage
 
 ```bash
-# Executar com coverage
-pytest tests/unit/ --cov=backend --cov-report=term-missing
+"D:/Projeto Radar/venv/Scripts/pytest.exe" backend/tests/unit/... \
+  --cov=backend.shared.domain... --cov-report=term-missing
 
 # Coverage minimo: 80%
 # Domain layer: 90%+
@@ -138,111 +131,112 @@ pytest tests/unit/ --cov=backend --cov-report=term-missing
 
 ---
 
-### QUALIDADE (Passos 9-12)
+### QUALIDADE (Passos 9-10)
 
-#### Passo 9: Code Review Automatico
-
-Executar /review-task para review com agentes especialistas.
-
-Categorias avaliadas:
-- Clean Architecture (20%)
-- SOLID Principles (15%)
-- Type Safety (15%)
-- Security (20%)
-- Performance (10%)
-- Testing (15%)
-- Documentation (5%)
-
-Score minimo: 85/100
-
-#### Passo 10: Validacao de Seguranca
-
-Checklist:
-- [ ] API Key validada em endpoints
-- [ ] Queries parametrizadas (sem concatenacao)
-- [ ] Validacao de entrada (Pydantic)
-- [ ] Erros no formato ANEEL
-- [ ] Dados sensiveis nao expostos em logs
-
-#### Passo 11: Validacao de Arquitetura
+#### Passo 9: Validacoes de Codigo
 
 ```bash
-# Verificar Clean Architecture
-# Domain NAO importa de Infrastructure
-grep -r "from.*infrastructure" backend/shared/domain/
-
-# Application NAO importa de API
-grep -r "from.*api" backend/shared/application/
-```
-
-#### Passo 12: Executar Suite Completa
-
-```bash
-# Executar TODOS os testes
-pytest tests/ --tb=short -q
-
 # Linting
-ruff check backend/
+"D:/Projeto Radar/venv/Scripts/ruff.exe" check backend/shared/...
 
 # Type checking
-mypy backend/
+"D:/Projeto Radar/venv/Scripts/mypy.exe" backend/shared/... --ignore-missing-imports
+
+# Clean Architecture
+grep -r "from.*infrastructure" backend/shared/domain/ || echo "OK"
+```
+
+#### Passo 10: Executar Suite Completa
+
+```bash
+# Executar TODOS os testes unitarios
+"D:/Projeto Radar/venv/Scripts/pytest.exe" backend/tests/unit/ -q --tb=short
+
+# Todos devem passar
 ```
 
 ---
 
-### ENTREGA (Passos 13-15)
+### ENTREGA (Passos 11-12)
 
-#### Passo 13: Atualizar EXECUTION_STATUS.md
+#### Passo 11: Atualizar EXECUTION_STATUS.md
 
-Editar `docs/tasks/$PROJECT/EXECUTION_STATUS.md`:
+Editar `docs/tasks/api-interrupcoes/EXECUTION_STATUS.md`:
 - Mudar status da task para "CONCLUIDO"
 - Atualizar data de conclusao
+- Adicionar entrada no Historico
 
-**Identificar projeto:**
-- RAD-1XX -> `docs/tasks/api-interrupcoes/EXECUTION_STATUS.md`
-- RAD-2XX -> `docs/tasks/mapa-interrupcoes/EXECUTION_STATUS.md`
-
-#### Passo 14: Criar Commit
+#### Passo 12: Criar Commit
 
 ```bash
 git add .
-git commit -m "feat(api-interrupcoes): implementa RAD-XXX
+git commit -m "feat(domain): descricao RAD-XXX
 
-- Descricao das mudancas
+- Detalhe das mudancas
 - Testes TDD implementados
 - Coverage: XX%
 
-[code-review-approved]
-Task: RAD-XXX
-Review Score: XX/100
-
-Generated with Claude Code
-
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+Task: RAD-XXX"
 ```
 
-#### Passo 15: Push e Pull Request
+---
+
+### FINALIZACAO (Passos 13-15)
+
+#### Passo 13: Push e Pull Request
 
 ```bash
 # Push
-git push -u origin feature/rad-XXX-descricao
+git push -u origin feat/rad-XXX/descricao-curta
 
-# Criar PR (se necessario)
+# Criar PR para hm
 gh pr create \
-  --base main \
-  --title "feat(api-interrupcoes): RAD-XXX - Titulo" \
+  --base hm \
+  --title "feat(domain): RAD-XXX - Titulo" \
   --body "## Summary
 - Implementa RAD-XXX: {titulo}
 
 ## Test Plan
 - [x] Testes unitarios passando
 - [x] Coverage >= 80%
-- [x] Code review >= 85/100
+- [x] Ruff/MyPy OK
 
 ## Checklist
 - [x] Clean Architecture respeitada
 - [x] TDD seguido
-- [x] Conventional Commits"
+- [x] Conventional Commits
+
+Task: RAD-XXX
+Closes #{issue_number}"
+```
+
+#### Passo 14: Merge e Cleanup
+
+```bash
+# Aguardar aprovacao/merge do PR
+# Apos merge:
+
+# Voltar para hm
+git checkout hm
+
+# Atualizar hm com merge
+git pull origin hm
+
+# Limpar referencias remotas
+git fetch --prune
+
+# Remover branch local
+git branch -d feat/rad-XXX/descricao-curta
+```
+
+#### Passo 15: Fechar Issue
+
+```bash
+# Fechar issue relacionada
+gh issue close {ISSUE_NUMBER} --comment "Implementado no PR #{PR_NUMBER}"
+
+# Verificar status
+gh issue view {ISSUE_NUMBER} --json state
 ```
 
 ---
@@ -252,8 +246,11 @@ gh pr create \
 1. **NUNCA pular passos** - Todos os 15 passos sao obrigatorios
 2. **NUNCA implementar sem testes** - TDD e obrigatorio
 3. **NUNCA commitar sem validacoes** - ruff, mypy, pytest devem passar
-4. **SEMPRE fazer review** - Score >= 85 obrigatorio
+4. **SEMPRE criar Issue antes da branch** - Passo 3 obrigatorio
 5. **SEMPRE atualizar status** - EXECUTION_STATUS.md em dia
+6. **SEMPRE usar venv do projeto** - D:/Projeto Radar/venv/Scripts/
+
+---
 
 ## EXECUCAO
 
@@ -263,4 +260,16 @@ Ao executar este comando, voce DEVE:
 2. Marcar cada passo como in_progress quando iniciar
 3. Marcar cada passo como completed quando finalizar
 4. NUNCA pular para o proximo passo sem completar o atual
-5. Informar claramente cada transicao de passo
+5. Informar claramente cada transicao de passo com formato:
+
+```
+---
+## RAD-XXX - Passo N: Nome do Passo
+
+**Objetivo:** Descricao do que sera feito
+
+[execucao]
+
+**Resultado:** OK/ERRO
+---
+```
