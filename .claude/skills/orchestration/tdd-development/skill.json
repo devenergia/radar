@@ -1,0 +1,129 @@
+{
+  "name": "tdd-development",
+  "version": "1.0.0",
+  "description": "Orquestra workflow TDD completo com selecao automatica de subagentes para tasks RAD-XXX",
+  "tier": "orchestration",
+  "author": "RADAR Team",
+  "dependencies": [
+    "test-runner",
+    "commit-formatter",
+    "code-review",
+    "backend-architect",
+    "test-engineer",
+    "security-auditor",
+    "database-optimizer"
+  ],
+  "input_schema": {
+    "taskId": {
+      "type": "string",
+      "required": true,
+      "pattern": "^RAD-[0-9]{3}$",
+      "description": "Task ID no formato RAD-XXX (ex: RAD-100)"
+    },
+    "type": {
+      "type": "string",
+      "required": true,
+      "enum": ["test", "implementation", "both"],
+      "description": "Tipo de desenvolvimento (test-first, impl-only, ou TDD completo)"
+    },
+    "autoCommit": {
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Criar commit automaticamente se testes passarem"
+    },
+    "autoBranch": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Criar branch automaticamente para a task"
+    },
+    "minCoverage": {
+      "type": "number",
+      "required": false,
+      "default": 80,
+      "description": "Coverage minimo exigido (%) para aprovar"
+    },
+    "minReviewScore": {
+      "type": "number",
+      "required": false,
+      "default": 85,
+      "description": "Score minimo de code review para aprovar commit"
+    },
+    "dryRun": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Simular execucao sem fazer commits/mudancas"
+    },
+    "taskDescription": {
+      "type": "string",
+      "required": false,
+      "description": "Descricao da task para contexto do subagente"
+    }
+  },
+  "output_schema": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "failure", "error", "partial"]
+    },
+    "taskId": "string",
+    "filesModified": ["string"],
+    "testsRun": {
+      "total": "number",
+      "passed": "number",
+      "failed": "number",
+      "coverage": "number"
+    },
+    "reviewScore": "number",
+    "reviewApproved": "boolean",
+    "commitHash": "string",
+    "branchName": "string",
+    "subagentUsed": "string",
+    "duration": "number",
+    "steps": [{
+      "step": "string",
+      "status": "string",
+      "duration": "number",
+      "output": "string"
+    }],
+    "message": "string",
+    "error": "string"
+  },
+  "usage": {
+    "example": "/tdd-development RAD-100 --type both --autoCommit",
+    "notes": [
+      "Seleciona subagente automaticamente baseado na fase da task",
+      "Executa workflow TDD: test -> impl -> test -> code-review -> commit",
+      "Valida coverage minimo e review score antes de commitar",
+      "Integra com test-runner, code-review e commit-formatter"
+    ]
+  },
+  "subagent_mapping": {
+    "domain_layer": {
+      "tasks": ["RAD-100", "RAD-101", "RAD-102", "RAD-103", "RAD-104"],
+      "subagent": "backend-architect",
+      "keywords": ["entity", "value object", "domain service"]
+    },
+    "infrastructure_layer": {
+      "tasks": ["RAD-105", "RAD-106", "RAD-107", "RAD-108", "RAD-109", "RAD-110", "RAD-111"],
+      "subagent": "database-optimizer",
+      "keywords": ["oracle", "repository", "cache", "dblink"]
+    },
+    "interfaces_layer": {
+      "tasks": ["RAD-112", "RAD-113", "RAD-114", "RAD-115", "RAD-116", "RAD-117", "RAD-118"],
+      "subagent": "backend-architect",
+      "keywords": ["fastapi", "route", "schema", "middleware"]
+    },
+    "testing": {
+      "tasks": ["RAD-119", "RAD-120", "RAD-121"],
+      "subagent": "test-engineer",
+      "keywords": ["test", "coverage", "pytest"]
+    },
+    "security": {
+      "tasks": ["RAD-122", "RAD-123", "RAD-124", "RAD-125"],
+      "subagent": "security-auditor",
+      "keywords": ["auth", "rate limit", "logging", "health"]
+    }
+  }
+}

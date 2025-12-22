@@ -1,0 +1,80 @@
+{
+  "version": "1.0.0",
+  "project": "RADAR",
+  "api": "api-interrupcoes",
+  "session": {
+    "current_task": null,
+    "current_step": null,
+    "branch": null,
+    "started_at": null
+  },
+  "workflow": {
+    "total_steps": 15,
+    "phases": {
+      "preparation": {
+        "steps": [1, 2, 3],
+        "name": "Preparacao"
+      },
+      "development": {
+        "steps": [4, 5, 6, 7, 8],
+        "name": "Desenvolvimento TDD"
+      },
+      "validation": {
+        "steps": [9, 10, 11, 12],
+        "name": "Validacao"
+      },
+      "delivery": {
+        "steps": [13, 14, 15],
+        "name": "Entrega"
+      }
+    }
+  },
+  "tasks": {
+    "domain": {
+      "range": "RAD-100 to RAD-104",
+      "subagent": "backend-architect",
+      "focus": "Entities, Value Objects, Domain Services"
+    },
+    "infrastructure": {
+      "range": "RAD-105 to RAD-111",
+      "subagent": "database-optimizer",
+      "focus": "Oracle, DBLink, Cache, Repositories"
+    },
+    "interfaces": {
+      "range": "RAD-112 to RAD-118",
+      "subagent": "backend-architect",
+      "focus": "FastAPI, Routes, Schemas, Use Cases"
+    },
+    "testing": {
+      "range": "RAD-119 to RAD-121",
+      "subagent": "test-engineer",
+      "focus": "Unit, Integration, E2E tests"
+    },
+    "security": {
+      "range": "RAD-122 to RAD-125",
+      "subagent": "security-auditor",
+      "focus": "Auth, Rate Limit, Logging, Monitoring"
+    }
+  },
+  "quality_thresholds": {
+    "coverage": {
+      "minimum": 80,
+      "domain": 90,
+      "infrastructure": 80,
+      "use_cases": 85,
+      "api": 80
+    },
+    "code_review": {
+      "minimum_score": 85,
+      "critical_threshold": 50
+    }
+  },
+  "git": {
+    "branch_pattern": "{type}/{task-id}/{description}",
+    "commit_pattern": "{type}({scope}): {message}",
+    "types": ["feat", "fix", "docs", "style", "refactor", "test", "chore"],
+    "scopes": ["api-interrupcoes", "domain", "infra", "tests", "config"]
+  },
+  "last_updated": "2025-12-19T00:00:00Z",
+  "notes": "Este arquivo e usado para rastrear o estado atual do desenvolvimento. Atualizado automaticamente pelos comandos do workflow."
+}

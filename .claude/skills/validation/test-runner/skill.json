@@ -1,0 +1,119 @@
+{
+  "name": "test-runner",
+  "version": "1.0.0",
+  "description": "Executa testes automatizados (pytest) com geracao de coverage reports para o Projeto RADAR",
+  "tier": "validation",
+  "author": "RADAR Team",
+  "dependencies": [],
+  "input_schema": {
+    "scope": {
+      "type": "string",
+      "required": true,
+      "enum": ["unit", "integration", "e2e", "all"],
+      "description": "Escopo dos testes a executar"
+    },
+    "pattern": {
+      "type": "string",
+      "required": false,
+      "description": "Padrao para filtrar testes (ex: test_interrupcao*)"
+    },
+    "coverage": {
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Gerar relatorio de coverage"
+    },
+    "parallel": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Executar testes em paralelo (pytest-xdist)"
+    },
+    "verbose": {
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Output verbose"
+    },
+    "failFast": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Parar na primeira falha"
+    },
+    "markers": {
+      "type": "string",
+      "required": false,
+      "description": "Markers pytest (unit, integration, e2e, slow)"
+    },
+    "path": {
+      "type": "string",
+      "required": false,
+      "description": "Path especifico para testes"
+    }
+  },
+  "output_schema": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "failure", "error"]
+    },
+    "totalTests": "number",
+    "passed": "number",
+    "failed": "number",
+    "skipped": "number",
+    "errors": "number",
+    "coverage": {
+      "statements": "number",
+      "branches": "number",
+      "functions": "number",
+      "lines": "number"
+    },
+    "duration": "number",
+    "failedTests": ["string"],
+    "coverageReport": "string",
+    "htmlReportPath": "string",
+    "message": "string",
+    "error": "string"
+  },
+  "usage": {
+    "example": "/test-runner --scope unit --coverage",
+    "notes": [
+      "Usa pytest para execucao de testes",
+      "Suporta markers: @pytest.mark.unit, @pytest.mark.integration, @pytest.mark.e2e",
+      "Gera relatorio HTML em htmlcov/index.html",
+      "Integra com tdd-development para Red/Green phases"
+    ]
+  },
+  "coverage_thresholds": {
+    "domain": {
+      "min": 90,
+      "ideal": 95,
+      "paths": ["backend/shared/domain"]
+    },
+    "infrastructure": {
+      "min": 80,
+      "ideal": 85,
+      "paths": ["backend/shared/infrastructure"]
+    },
+    "use_cases": {
+      "min": 85,
+      "ideal": 90,
+      "paths": ["backend/apps/*/use_cases"]
+    },
+    "api": {
+      "min": 80,
+      "ideal": 85,
+      "paths": ["backend/apps/*/routes.py"]
+    },
+    "global": {
+      "min": 80,
+      "ideal": 85
+    }
+  },
+  "pytest_markers": [
+    "unit: Testes unitarios (sem I/O externo)",
+    "integration: Testes de integracao (com banco/cache)",
+    "e2e: Testes end-to-end (API completa)",
+    "slow: Testes lentos (> 1s)"
+  ]
+}

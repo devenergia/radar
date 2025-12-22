@@ -24,6 +24,7 @@ dependencies = [
     "uvicorn[standard]>=0.27.0",
     "oracledb>=2.0.0",
     "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
     "python-dotenv>=1.0.0",
@@ -31,6 +32,8 @@ dependencies = [
     "httpx>=0.26.0",
     "requests>=2.31.0",
     "prometheus-client>=0.19.0",
+    "redis>=5.0.0",
+    "celery>=5.3.0",
 ]
 
 [project.optional-dependencies]
@@ -154,6 +157,8 @@ exclude_lines = [
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
     "if __name__ == .__main__.:",
+    "@abstractmethod",
+    "\\.\\.\\.",  # Ellipsis em Protocols
 ]
 fail_under = 80
 show_missing = true
