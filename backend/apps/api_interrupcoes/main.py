@@ -14,6 +14,7 @@ from backend.shared.infrastructure.logger import configure_logging, get_logger
 
 from backend.apps.api_interrupcoes.routes import router
 from backend.apps.api_interrupcoes.middleware import (
+    RateLimitMiddleware,
     RequestLoggingMiddleware,
     ErrorHandlerMiddleware,
 )
@@ -74,9 +75,10 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Middlewares customizados
+    # Middlewares customizados (ordem inversa de execucao)
     app.add_middleware(ErrorHandlerMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
+    app.add_middleware(RateLimitMiddleware)
 
     # Rotas
     app.include_router(router)

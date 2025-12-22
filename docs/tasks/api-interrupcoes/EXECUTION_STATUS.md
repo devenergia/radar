@@ -2,7 +2,7 @@
 
 **Projeto:** RADAR - API Quantitativo de Interrupcoes Ativas
 **Inicio:** 2025-12-19
-**Ultima Atualizacao:** 2025-12-22 (RAD-121 concluido)
+**Ultima Atualizacao:** 2025-12-22 (RAD-123 concluido)
 
 ---
 
@@ -14,9 +14,9 @@ Fase 2 (Application):   [██████████] 3/3  (100%) - COMPLETA
 Fase 3 (Infrastructure):[██████░░░░] 3/4  (75%)  - RAD-109 REQUER REFATORACAO
 Fase 4 (Interfaces):    [██████████] 5/5  (100%) - EXISTENTE
 Fase 5 (Testes):        [██████████] 5/5  (100%) - COMPLETA
-Fase 6 (Seguranca):     [██░░░░░░░░] 1/4  (25%)  - PARCIAL
+Fase 6 (Seguranca):     [████░░░░░░] 2/4  (50%)  - EM PROGRESSO
 ─────────────────────────────────────────────────────────────
-TOTAL:                  [████████░░] 22/26 (85%)
+TOTAL:                  [████████░░] 23/26 (88%)
 ```
 
 > **ATENCAO:** Status revisado em 2025-12-19. Identificadas inconsistencias
@@ -192,23 +192,23 @@ TOTAL:                  [████████░░] 22/26 (85%)
 | Metrica | Valor |
 |---------|-------|
 | Total Tasks | 4 |
-| Concluidas | 1 |
+| Concluidas | 2 |
 | Em Progresso | 0 |
 | Bloqueadas | 0 |
-| Progresso | 25% |
+| Progresso | 50% |
 
 ### Status Detalhado
 
 | Task | Titulo | Status | Inicio | Fim | Observacoes |
 |------|--------|--------|--------|-----|-------------|
 | RAD-122 | Autenticacao API Key | `[E]` EXISTENTE | - | - | Implementado em dependencies.py |
-| RAD-123 | Rate Limiting (10 req/min) | `[ ]` PENDENTE | - | - | NAO implementado |
+| RAD-123 | Rate Limiting (10 req/min) | `[X]` CONCLUIDO | 2025-12-22 | 2025-12-22 | RateLimitMiddleware - 9 testes, 88% coverage |
 | RAD-124 | IP Whitelist ANEEL | `[ ]` PENDENTE | - | - | Implementado mas desabilitado |
-| RAD-125 | Validacao Final ANEEL | `[!]` BLOQUEADO | - | - | Bloqueado por RAD-117 a RAD-124 |
+| RAD-125 | Validacao Final ANEEL | `[!]` BLOQUEADO | - | - | Bloqueado por RAD-124 |
 
 ### Pendencias Fase 6
 
-- [ ] RAD-123: Implementar rate limiting (10 req/min)
+- [x] RAD-123: Implementar rate limiting (10 req/min)
 - [ ] RAD-124: Ativar IP whitelist na rota principal
 - [ ] RAD-125: Executar validacao de conformidade ANEEL
 
@@ -249,7 +249,7 @@ TOTAL:                  [████████░░] 22/26 (85%)
 | 8 | ~~RAD-105~~ | ~~Domain Service Aggregator~~ | ~~Separacao de responsabilidades~~ FEITO |
 | 9 | ~~RAD-106~~ | ~~Protocol CacheService~~ | ~~Inversao de dependencia~~ FEITO |
 | 10 | RAD-109 | Refatorar Repository (sync) | Padrao projeto referencia |
-| 11 | RAD-123 | Rate Limiting | Requisito ANEEL |
+| 11 | ~~RAD-123~~ | ~~Rate Limiting~~ | ~~Requisito ANEEL~~ FEITO |
 
 ### MEDIO (Melhoria)
 
@@ -302,6 +302,7 @@ TOTAL:                  [████████░░] 22/26 (85%)
 | 2025-12-22 | RAD-121 | Testes E2E criados | 19 testes E2E para API Interrupcoes, 77% coverage |
 | 2025-12-22 | - | Config atualizado | Settings com env_prefix="RADAR_" |
 | 2025-12-22 | - | .env.example atualizado | Variaveis com prefixo RADAR_ |
+| 2025-12-22 | RAD-123 | Rate Limiting implementado | RateLimitMiddleware (10 req/min), 9 testes, 88% coverage |
 
 ---
 
@@ -383,7 +384,7 @@ pytest backend/tests/ --cov=backend --cov-report=html --cov-fail-under=80
 | Formato JSON camelCase | OK |
 | Campos obrigatorios | OK |
 | Autenticacao x-api-key | OK |
-| Rate Limiting 10 req/min | PENDENTE |
+| Rate Limiting 10 req/min | OK |
 | Historico 7 dias | PENDENTE (Abril/2026) |
 
 ---
