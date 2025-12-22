@@ -2,7 +2,7 @@
 
 **Projeto:** RADAR - API Quantitativo de Interrupcoes Ativas
 **Inicio:** 2025-12-19
-**Ultima Atualizacao:** 2025-12-22 (RAD-119 concluido)
+**Ultima Atualizacao:** 2025-12-22 (RAD-120 concluido)
 
 ---
 
@@ -13,10 +13,10 @@ Fase 1 (Domain):        [██████████] 5/5  (100%) - COMPLETA
 Fase 2 (Application):   [██████████] 3/3  (100%) - COMPLETA
 Fase 3 (Infrastructure):[██████░░░░] 3/4  (75%)  - RAD-109 REQUER REFATORACAO
 Fase 4 (Interfaces):    [██████████] 5/5  (100%) - EXISTENTE
-Fase 5 (Testes):        [██████░░░░] 3/5  (60%)  - RAD-117, RAD-118, RAD-119 CONCLUIDOS
+Fase 5 (Testes):        [████████░░] 4/5  (80%)  - RAD-117, RAD-118, RAD-119, RAD-120 CONCLUIDOS
 Fase 6 (Seguranca):     [██░░░░░░░░] 1/4  (25%)  - PARCIAL
 ─────────────────────────────────────────────────────────────
-TOTAL:                  [████████░░] 20/26 (77%)
+TOTAL:                  [████████░░] 21/26 (81%)
 ```
 
 > **ATENCAO:** Status revisado em 2025-12-19. Identificadas inconsistencias
@@ -158,10 +158,10 @@ TOTAL:                  [████████░░] 20/26 (77%)
 | Metrica | Valor |
 |---------|-------|
 | Total Tasks | 5 |
-| Concluidas | 3 |
+| Concluidas | 4 |
 | Em Progresso | 0 |
 | Bloqueadas | 0 |
-| Progresso | 60% |
+| Progresso | 80% |
 
 ### Status Detalhado
 
@@ -170,7 +170,7 @@ TOTAL:                  [████████░░] 20/26 (77%)
 | RAD-117 | Testes Unit - Value Objects | `[X]` CONCLUIDO | 2025-12-22 | 2025-12-22 | 58 testes, 100% coverage |
 | RAD-118 | Testes Unit - Entity | `[X]` CONCLUIDO | 2025-12-22 | 2025-12-22 | 26 testes, 100% coverage |
 | RAD-119 | Testes Unit - Use Case | `[X]` CONCLUIDO | 2025-12-22 | 2025-12-22 | 17 testes, 98% coverage |
-| RAD-120 | Testes Integration - Repository | `[ ]` PENDENTE | - | - | CRITICO - 0 testes existentes |
+| RAD-120 | Testes Integration - Repository | `[X]` CONCLUIDO | 2025-12-22 | 2025-12-22 | 19 testes, 100% coverage |
 | RAD-121 | Testes E2E - API | `[ ]` PENDENTE | - | - | CRITICO - 0 testes existentes |
 
 ### Pendencias Fase 5 (CRITICAS)
@@ -178,10 +178,10 @@ TOTAL:                  [████████░░] 20/26 (77%)
 - [x] RAD-117: Criar testes para CodigoIBGE e TipoInterrupcao (58 testes, 100% coverage)
 - [x] RAD-118: Criar testes para Entity Interrupcao (26 testes, 100% coverage)
 - [x] RAD-119: Criar testes para GetInterrupcoesAtivasUseCase (17 testes, 98% coverage)
-- [ ] RAD-120: Criar testes de integracao com Oracle
+- [x] RAD-120: Criar testes de integracao para repository (19 testes, 100% coverage)
 - [ ] RAD-121: Criar testes E2E para endpoints
 
-**ALERTA:** Cobertura Domain = 100%, Application = 98%, Outros = 0%, Meta Total = 80%
+**ALERTA:** Cobertura Domain = 100%, Application = 98%, Infrastructure = 100%, E2E = 0%, Meta Total = 80%
 
 ---
 
@@ -298,6 +298,7 @@ TOTAL:                  [████████░░] 20/26 (77%)
 | 2025-12-22 | RAD-117 | Testes criados | 58 testes para Value Objects, 100% coverage |
 | 2025-12-22 | RAD-118 | Testes criados | 26 testes para Entity Interrupcao, 100% coverage |
 | 2025-12-22 | RAD-119 | Testes criados | 17 testes para Use Case GetInterrupcoesAtivas, 98% coverage |
+| 2025-12-22 | RAD-120 | Testes criados | 19 testes de integracao para InterrupcaoRepository, 100% coverage |
 
 ---
 
