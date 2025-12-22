@@ -4,431 +4,591 @@
 
 Este documento descreve a arquitetura de componentes da API 1 do Projeto RADAR, responsavel pelo fornecimento de dados quantitativos de interrupcoes ativas no sistema eletrico de Roraima.
 
-## Diagrama de Infraestrutura
+---
+
+## Diagrama de Infraestrutura Completa
 
 ```mermaid
 flowchart TB
     subgraph Internet["Internet"]
         ANEEL[ANEEL<br/>Sistema de Polling]
+        PUBLICO[Publico<br/>Portal Mapa]
     end
 
-    subgraph Firewall["Firewall"]
-        FW[Regras:<br/>- HTTPS Only<br/>- Rate Limit<br/>- Whitelist IP]
+    subgraph Firewall["Firewall / WAF"]
+        FW[Regras:<br/>- HTTPS Only<br/>- Whitelist IP ANEEL<br/>- DDoS Protection]
     end
 
-    subgraph Server["Servidor de Aplicacao<br/>10.2.1.208"]
-        subgraph API["RADAR API :8000"]
-            FASTAPI[FastAPI Application]
+    subgraph Server["Servidor de Aplicacao - 10.2.1.208"]
+        subgraph Containers["Docker Containers"]
+            subgraph NGINX["NGINX :80/:443"]
+                direction TB
+                SSL[SSL Termination<br/>TLS 1.2+]
+                PROXY[Reverse Proxy]
+                CACHE_NGINX[Static Cache<br/>GeoJSON 24h]
+            end
+
+            subgraph Backend["Backend :8000"]
+                FASTAPI[FastAPI<br/>Python 3.11+]
+                UVICORN[Uvicorn<br/>4 workers]
+            end
+
+            subgraph Redis["Redis :6379"]
+                CACHE_REDIS[(Cache Layer<br/>TTL 5 min)]
+            end
+
+            subgraph Celery["Celery"]
+                BEAT[Celery Beat<br/>Scheduler 30 min]
+                WORKER[Celery Worker]
+            end
+
+            subgraph Monitoring["Monitoramento"]
+                PROMETHEUS[Prometheus<br/>:9090]
+                GRAFANA[Grafana<br/>:3000]
+            end
         end
     end
 
-    subgraph Oracle["Banco de Dados Oracle"]
-        subgraph OracleRADAR["Oracle RADAR<br/>cn-dbrcomp:1568/AJUBVPD"]
+    subgraph Oracle["Banco de Dados Oracle - cn-dbrcomp:1568"]
+        subgraph OracleRADAR["Oracle RADAR (AJUBVPD)"]
             RADAR_DB[(RADAR Schema)]
+            MV[(MV_PORTAL_PUBLICO)]
         end
-        subgraph OracleINSERVICE["Oracle INSERVICE"]
-            INSERVICE[(INSERVICE<br/>Interrupcoes)]
+    end
+
+    subgraph DBLinks["Sistemas Fonte via DBLink"]
+        subgraph OracleINSERVICE["INSERVICE"]
+            INSERVICE[(AGENCY_EVENT<br/>SWITCH_PLAN_TASKS<br/>OMS_CONNECTIVITY)]
         end
-        subgraph OracleINDICADORES["Oracle INDICADORES"]
-            INDICADORES[(INDICADORES<br/>Universos)]
+        subgraph OracleINDICADORES["INDICADORES"]
+            INDICADORES[(IND_UNIVERSOS<br/>IND_CONJUNTOS)]
         end
     end
 
     ANEEL -->|HTTPS :443| FW
-    FW --> API
-    API -->|:1568| OracleRADAR
+    PUBLICO -->|HTTPS :443| FW
+    FW --> NGINX
+    NGINX -->|HTTP :8000| Backend
+    Backend --> Redis
+    Backend -->|Oracle Net :1568| OracleRADAR
     RADAR_DB -.->|DBLINK_INSERVICE| INSERVICE
     RADAR_DB -.->|DBLINK_INDICADORES| INDICADORES
+    BEAT --> WORKER
+    WORKER --> Backend
+    PROMETHEUS --> Backend
+    PROMETHEUS --> Redis
+    GRAFANA --> PROMETHEUS
 
     style Server fill:#c8e6c9
     style Oracle fill:#fff3e0
+    style DBLinks fill:#fce4ec
     style Internet fill:#e1f5fe
+    style Containers fill:#e8f5e9
 ```
+
+---
 
 ## Mapa de Portas e Conexoes
 
-| Servico | Host | Porta | Protocolo | Descricao |
-|---------|------|-------|-----------|-----------|
-| **RADAR API** | 10.2.1.208 | 8000 | HTTP/HTTPS | FastAPI Application |
-| **Oracle RADAR** | cn-dbrcomp | 1568 | Oracle Net | Banco principal (AJUBVPD) |
-| **DBLINK_INSERVICE** | - | 1521 | Oracle Net | Link para sistema OMS |
-| **DBLINK_INDICADORES** | - | 1521 | Oracle Net | Link para universos |
-| **Memory Cache** | localhost | - | In-Memory | Cache de 5 minutos |
+### Servidor de Aplicacao (10.2.1.208)
 
-## Diagrama de Componentes da Aplicacao
+| Container | Porta Interna | Porta Externa | Protocolo | Descricao |
+|-----------|---------------|---------------|-----------|-----------|
+| **NGINX** | 80 | 80 | HTTP | Redirect para HTTPS |
+| **NGINX** | 443 | 443 | HTTPS | SSL Termination |
+| **FastAPI** | 8000 | - | HTTP | API Backend (interno) |
+| **Redis** | 6379 | - | Redis | Cache (interno) |
+| **Prometheus** | 9090 | 9090 | HTTP | Metricas |
+| **Grafana** | 3000 | 3000 | HTTP | Dashboards |
 
-```mermaid
-flowchart TB
-    subgraph Client["Cliente ANEEL"]
-        REQ[GET /quantitativointerrupcoesativas<br/>Header: x-api-key]
-    end
+### Banco de Dados Oracle
 
-    subgraph Server["10.2.1.208:8000"]
-        subgraph Middlewares["Middleware Stack"]
-            direction TB
-            RATE[RateLimitMiddleware<br/>10 req/min por IP]
-            LOG[RequestLoggingMiddleware<br/>structlog]
-            ERR[ErrorHandlerMiddleware<br/>Formato ANEEL]
-            CORS[CORSMiddleware]
-            AUTH[API Key Auth<br/>x-api-key header]
-        end
+| Servico | Host | Porta | Service Name | Descricao |
+|---------|------|-------|--------------|-----------|
+| **Oracle RADAR** | cn-dbrcomp | 1568 | AJUBVPD | Banco principal |
+| **DBLINK_INSERVICE** | (interno) | 1521 | - | Sistema OMS |
+| **DBLINK_INDICADORES** | (interno) | 1521 | - | Universos IBGE |
 
-        subgraph Interfaces["Interfaces Layer"]
-            ROUTES[Routes<br/>/quantitativointerrupcoesativas<br/>/health]
-            SCHEMAS[Pydantic Schemas<br/>ANEEL Format]
-        end
+---
 
-        subgraph Application["Application Layer"]
-            USECASE[GetInterrupcoesAtivasUseCase<br/>Orquestra busca e cache]
-            AGGREGATOR[InterrupcaoAggregatorService<br/>Agrega por municipio/tipo]
-        end
-
-        subgraph Domain["Domain Layer"]
-            ENTITY[Entity: Interrupcao]
-            VO1[Value Object: CodigoIBGE]
-            VO2[Value Object: TipoInterrupcao]
-            PROTO1[Protocol: InterrupcaoRepository]
-            PROTO2[Protocol: CacheService]
-        end
-
-        subgraph Infrastructure["Infrastructure Layer"]
-            REPO[OracleInterrupcaoRepository<br/>SQLAlchemy + DBLinks]
-            CACHE[MemoryCacheService<br/>TTL: 300s]
-            POOL[OracleConnectionPool<br/>min:2 max:10]
-        end
-    end
-
-    subgraph Database["Banco de Dados"]
-        ORACLE[(Oracle<br/>cn-dbrcomp:1568)]
-    end
-
-    REQ --> RATE
-    RATE --> LOG
-    LOG --> ERR
-    ERR --> CORS
-    CORS --> AUTH
-    AUTH --> ROUTES
-    ROUTES --> USECASE
-    USECASE --> CACHE
-    USECASE --> AGGREGATOR
-    AGGREGATOR --> REPO
-    REPO --> POOL
-    POOL --> ORACLE
-
-    style Client fill:#e1f5fe
-    style Middlewares fill:#fce4ec
-    style Interfaces fill:#e8f5e9
-    style Application fill:#e3f2fd
-    style Domain fill:#c8e6c9
-    style Infrastructure fill:#fff3e0
-    style Database fill:#ffe0b2
-```
-
-## Fluxo de Requisicao
-
-```mermaid
-sequenceDiagram
-    participant A as ANEEL
-    participant R as RateLimitMiddleware
-    participant AU as AuthMiddleware
-    participant UC as UseCase
-    participant C as Cache
-    participant DB as Oracle
-
-    A->>R: GET /quantitativointerrupcoesativas
-    R->>R: Verificar limite (10 req/min)
-
-    alt Rate Limit Excedido
-        R-->>A: 429 Too Many Requests
-    end
-
-    R->>AU: Forward request
-    AU->>AU: Validar x-api-key
-
-    alt API Key Invalida
-        AU-->>A: 401 Unauthorized
-    end
-
-    AU->>UC: execute()
-    UC->>C: get("interrupcoes:ativas")
-
-    alt Cache HIT
-        C-->>UC: cached_data
-        UC-->>A: 200 OK (from cache)
-    else Cache MISS
-        C-->>UC: None
-        UC->>DB: buscar_ativas()
-        DB-->>UC: rows
-        UC->>UC: agregar_por_municipio()
-        UC->>C: set(key, data, TTL=300s)
-        UC-->>A: 200 OK (from DB)
-    end
-```
-
-## Estrutura de Diretorios
+## Diagrama de Rede
 
 ```
-backend/
-├── apps/
-│   └── api_interrupcoes/           # API 1
-│       ├── main.py                 # FastAPI app factory
-│       ├── routes.py               # Endpoints HTTP
-│       ├── schemas.py              # Pydantic models (ANEEL)
-│       ├── dependencies.py         # Dependency Injection
-│       ├── middleware.py           # Rate Limit, Logging, Error
-│       ├── use_cases/
-│       │   └── get_interrupcoes_ativas.py
-│       └── repositories/
-│           └── interrupcao_repository.py
-│
-├── shared/
-│   ├── domain/
-│   │   ├── entities/
-│   │   │   └── interrupcao.py      # Entity Interrupcao
-│   │   ├── value_objects/
-│   │   │   ├── codigo_ibge.py      # VO CodigoIBGE (15 municipios RR)
-│   │   │   └── tipo_interrupcao.py # Enum PROGRAMADA/NAO_PROGRAMADA
-│   │   ├── repositories/
-│   │   │   └── interrupcao_repository.py  # Protocol
-│   │   ├── cache/
-│   │   │   └── cache_service.py    # Protocol
-│   │   ├── services/
-│   │   │   └── interrupcao_aggregator.py  # Domain Service
-│   │   └── result.py               # Result Pattern
-│   │
-│   └── infrastructure/
-│       ├── database/
-│       │   ├── oracle_pool.py      # Connection Pool
-│       │   └── oracle_connection.py
-│       ├── cache/
-│       │   └── memory_cache.py     # MemoryCacheService
-│       ├── http/
-│       │   └── aneel_response.py   # Response Builder
-│       ├── config.py               # Pydantic Settings
-│       └── logger.py               # structlog
-│
-└── tests/
-    ├── unit/
-    ├── integration/
-    └── e2e/
-        └── api/
-            ├── test_interrupcoes.py
-            └── test_rate_limiting.py
+                                    INTERNET
+                                        │
+                                        │ HTTPS :443
+                                        ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│                              FIREWALL / WAF                                │
+│                     (Whitelist IP ANEEL, DDoS Protection)                 │
+└───────────────────────────────────────────────────────────────────────────┘
+                                        │
+                                        │
+                                        ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│                     SERVIDOR 10.2.1.208 (Docker Host)                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │                         docker-network: radar                        │  │
+│  │                                                                      │  │
+│  │   ┌─────────────┐    ┌─────────────┐    ┌─────────────────────┐    │  │
+│  │   │   NGINX     │    │   FastAPI   │    │       Redis         │    │  │
+│  │   │  :80/:443   │───►│    :8000    │───►│       :6379         │    │  │
+│  │   │             │    │             │    │                     │    │  │
+│  │   │ - SSL       │    │ - Uvicorn   │    │ - Cache 5min        │    │  │
+│  │   │ - Proxy     │    │ - 4 workers │    │ - Stale 1h          │    │  │
+│  │   │ - Cache     │    │ - Async     │    │                     │    │  │
+│  │   └─────────────┘    └──────┬──────┘    └─────────────────────┘    │  │
+│  │                             │                                       │  │
+│  │   ┌─────────────┐    ┌──────┴──────┐    ┌─────────────────────┐    │  │
+│  │   │ Celery Beat │    │   Celery    │    │    Prometheus       │    │  │
+│  │   │ (scheduler) │───►│   Worker    │    │      :9090          │    │  │
+│  │   │  30 min     │    │             │    └──────────┬──────────┘    │  │
+│  │   └─────────────┘    └─────────────┘               │               │  │
+│  │                                          ┌─────────▼─────────┐     │  │
+│  │                                          │     Grafana       │     │  │
+│  │                                          │      :3000        │     │  │
+│  │                                          └───────────────────┘     │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────────┘
+                                        │
+                                        │ Oracle Net :1568
+                                        ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│                     ORACLE DATABASE - cn-dbrcomp:1568                      │
+│                            Service: AJUBVPD                                │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │                         RADAR Schema                                 │  │
+│  │   - API_KEYS                                                        │  │
+│  │   - AUDIT_LOG                                                       │  │
+│  │   - MV_PORTAL_PUBLICO (Materialized View)                          │  │
+│  └─────────────────────────────────────────────────────────────────────┘  │
+│                    │                              │                        │
+│         DBLINK_INSERVICE                DBLINK_INDICADORES                │
+│                    │                              │                        │
+│                    ▼                              ▼                        │
+│  ┌──────────────────────────┐    ┌──────────────────────────────────┐    │
+│  │       INSERVICE          │    │          INDICADORES              │    │
+│  │  - AGENCY_EVENT          │    │  - IND_UNIVERSOS                  │    │
+│  │  - SWITCH_PLAN_TASKS     │    │  - IND_CONJUNTOS                  │    │
+│  │  - OMS_CONNECTIVITY      │    │  - IND_MUNICIPIOS                 │    │
+│  └──────────────────────────┘    └──────────────────────────────────────┘    │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Configuracao do Servidor (10.2.1.208)
+---
 
-### Variaveis de Ambiente
+## Docker Compose (Producao)
+
+```yaml
+# docker-compose.yml
+version: "3.8"
+
+services:
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: radar-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./frontend/dist:/var/www/mapa/dist:ro
+      - ./geojson:/var/www/mapa/geojson:ro
+      - nginx_cache:/var/cache/nginx
+    depends_on:
+      - backend
+    networks:
+      - radar
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: radar-api
+    expose:
+      - "8000"
+    environment:
+      - RADAR_HOST=0.0.0.0
+      - RADAR_PORT=8000
+      - RADAR_WORKERS=4
+      - RADAR_DB_CONNECTION_STRING=${ORACLE_DSN}
+      - RADAR_CACHE_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    networks:
+      - radar
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: radar-redis
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - radar
+    restart: unless-stopped
+
+  celery-worker:
+    build: ./backend
+    container_name: radar-celery-worker
+    command: celery -A backend.shared.infrastructure.celery worker -l info
+    environment:
+      - RADAR_DB_CONNECTION_STRING=${ORACLE_DSN}
+      - RADAR_CACHE_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - backend
+    networks:
+      - radar
+    restart: unless-stopped
+
+  celery-beat:
+    build: ./backend
+    container_name: radar-celery-beat
+    command: celery -A backend.shared.infrastructure.celery beat -l info
+    environment:
+      - RADAR_CACHE_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - celery-worker
+    networks:
+      - radar
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: radar-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - radar
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: radar-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    networks:
+      - radar
+    restart: unless-stopped
+
+networks:
+  radar:
+    driver: bridge
+
+volumes:
+  nginx_cache:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+```
+
+---
+
+## Configuracao NGINX
+
+```nginx
+# /etc/nginx/conf.d/default.conf
+
+upstream api_backend {
+    server backend:8000;
+    keepalive 32;
+}
+
+# Cache config
+proxy_cache_path /var/cache/nginx/mapa levels=1:2
+    keys_zone=mapa_cache:10m max_size=1g inactive=30m use_temp_path=off;
+
+# HTTP -> HTTPS redirect
+server {
+    listen 80;
+    server_name portal.roraimaenergia.com.br;
+    return 301 https://$server_name$request_uri;
+}
+
+# HTTPS server
+server {
+    listen 443 ssl http2;
+    server_name portal.roraimaenergia.com.br;
+
+    # SSL
+    ssl_certificate /etc/nginx/ssl/portal.crt;
+    ssl_certificate_key /etc/nginx/ssl/portal.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    # Gzip
+    gzip on;
+    gzip_types text/plain application/json application/javascript text/css;
+
+    # Frontend (Portal Mapa)
+    root /var/www/mapa/dist;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API Backend
+    location /api/ {
+        proxy_pass http://api_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Cache para API mapa (30 min)
+        location ~ ^/api/mapa/ {
+            proxy_pass http://api_backend;
+            proxy_cache mapa_cache;
+            proxy_cache_valid 200 30m;
+            add_header X-Cache-Status $upstream_cache_status;
+        }
+    }
+
+    # GeoJSON (cache longo)
+    location /geojson/ {
+        alias /var/www/mapa/geojson/;
+        expires 24h;
+        add_header Cache-Control "public";
+    }
+
+    # Health check
+    location /health {
+        proxy_pass http://api_backend;
+        access_log off;
+    }
+
+    # Metrics (interno)
+    location /metrics {
+        proxy_pass http://api_backend;
+        allow 10.0.0.0/8;
+        deny all;
+    }
+}
+```
+
+---
+
+## Variaveis de Ambiente (Producao)
 
 ```bash
-# Servidor
+# .env.production
+
+# ========================================
+# SERVIDOR - 10.2.1.208
+# ========================================
 RADAR_HOST=0.0.0.0
 RADAR_PORT=8000
 RADAR_WORKERS=4
 RADAR_ENVIRONMENT=production
+RADAR_DEBUG=false
 
-# Banco de Dados Oracle
+# ========================================
+# BANCO DE DADOS ORACLE
+# ========================================
 RADAR_DB_USER=radar_app
-RADAR_DB_PASSWORD=***
+RADAR_DB_PASSWORD=<senha_segura>
 RADAR_DB_CONNECTION_STRING=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=cn-dbrcomp)(PORT=1568))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=AJUBVPD)))
 RADAR_DB_POOL_MIN=2
 RADAR_DB_POOL_MAX=10
+RADAR_DB_POOL_TIMEOUT=60
 
-# Autenticacao
-RADAR_API_KEY=***
-RADAR_ALLOWED_IPS=*
-
-# Cache
+# ========================================
+# CACHE REDIS
+# ========================================
+RADAR_CACHE_URL=redis://redis:6379/0
 RADAR_CACHE_TTL_SECONDS=300
 RADAR_CACHE_STALE_TTL_SECONDS=3600
 
-# Logging
+# ========================================
+# AUTENTICACAO
+# ========================================
+RADAR_API_KEY=<api_key_aneel>
+RADAR_ALLOWED_IPS=200.193.0.0/16
+
+# ========================================
+# CELERY (SCHEDULER)
+# ========================================
+CELERY_BROKER_URL=redis://redis:6379/1
+CELERY_RESULT_BACKEND=redis://redis:6379/2
+CELERY_SCHEDULE_INTERVAL=1800  # 30 minutos
+
+# ========================================
+# LOGGING
+# ========================================
 RADAR_LOG_LEVEL=INFO
 RADAR_LOG_FORMAT=json
 
-# Email
+# ========================================
+# CORS
+# ========================================
+RADAR_CORS_ORIGINS=https://portal.roraimaenergia.com.br
+
+# ========================================
+# EMAIL
+# ========================================
 RADAR_EMAIL_INDISPONIBILIDADE=radar@roraimaenergia.com.br
 ```
 
-### Endpoints Disponiveis
+---
 
-| Metodo | Endpoint | Porta | Descricao |
-|--------|----------|-------|-----------|
-| GET | `/` | 8000 | Root info |
-| GET | `/health` | 8000 | Health check |
-| GET | `/quantitativointerrupcoesativas` | 8000 | API principal ANEEL |
-| GET | `/docs` | 8000 | Swagger UI (dev only) |
-| GET | `/openapi.json` | 8000 | OpenAPI spec |
+## Endpoints por Porta
 
-## Middleware Stack (ordem de execucao)
+### Porta 443 (HTTPS - Publico)
 
-```
-Request
-    │
-    ▼
-┌────────────────────────────────────────────────────────────┐
-│  1. RateLimitMiddleware                                     │
-│     - Limite: 10 requisicoes/minuto por IP                 │
-│     - Headers: X-RateLimit-Limit, X-RateLimit-Remaining    │
-│     - Resposta 429: formato ANEEL                          │
-│     - Excluidos: /, /health, /docs, /openapi.json          │
-└────────────────────────────────────────────────────────────┘
-    │
-    ▼
-┌────────────────────────────────────────────────────────────┐
-│  2. RequestLoggingMiddleware                                │
-│     - Log estruturado (structlog)                          │
-│     - Request ID, duration, status_code                    │
-└────────────────────────────────────────────────────────────┘
-    │
-    ▼
-┌────────────────────────────────────────────────────────────┐
-│  3. ErrorHandlerMiddleware                                  │
-│     - Captura excecoes nao tratadas                        │
-│     - Retorna 500 em formato ANEEL                         │
-└────────────────────────────────────────────────────────────┘
-    │
-    ▼
-┌────────────────────────────────────────────────────────────┐
-│  4. CORSMiddleware                                          │
-│     - Origins: configuravel via RADAR_CORS_ORIGINS         │
-│     - Methods: GET, OPTIONS                                │
-└────────────────────────────────────────────────────────────┘
-    │
-    ▼
-┌────────────────────────────────────────────────────────────┐
-│  5. API Key Authentication (Dependency)                     │
-│     - Header: x-api-key                                    │
-│     - Validacao contra RADAR_API_KEY                       │
-│     - Resposta 401: formato ANEEL                          │
-└────────────────────────────────────────────────────────────┘
-    │
-    ▼
-  Route Handler
-```
+| Metodo | Endpoint | Autenticacao | Descricao |
+|--------|----------|--------------|-----------|
+| GET | `/` | Nao | Portal Mapa (Frontend) |
+| GET | `/health` | Nao | Health check |
+| GET | `/quantitativointerrupcoesativas` | x-api-key | API ANEEL |
+| GET | `/api/mapa/interrupcoes` | Nao | Interrupcoes para mapa |
+| GET | `/api/mapa/estatisticas` | Nao | Estatisticas |
+| GET | `/api/mapa/municipios` | Nao | Lista municipios |
+| GET | `/geojson/roraima.json` | Nao | GeoJSON municipios |
 
-## Diagrama de Banco de Dados
+### Porta 9090 (Prometheus - Interno)
+
+| Metodo | Endpoint | Descricao |
+|--------|----------|-----------|
+| GET | `/metrics` | Metricas da aplicacao |
+| GET | `/targets` | Status dos targets |
+
+### Porta 3000 (Grafana - Interno)
+
+| Metodo | Endpoint | Descricao |
+|--------|----------|-----------|
+| GET | `/` | Dashboard principal |
+| GET | `/d/radar-api` | Dashboard API |
+| GET | `/d/radar-cache` | Dashboard Cache |
+
+---
+
+## Fluxo de Comunicacao
 
 ```mermaid
-erDiagram
-    RADAR_DB ||--o{ DBLINK_INSERVICE : "conecta via"
-    RADAR_DB ||--o{ DBLINK_INDICADORES : "conecta via"
+sequenceDiagram
+    participant A as ANEEL
+    participant N as NGINX :443
+    participant F as FastAPI :8000
+    participant R as Redis :6379
+    participant O as Oracle :1568
 
-    DBLINK_INSERVICE {
-        AGENCY_EVENT interrupcoes
-        SWITCH_PLAN_TASKS programadas
-        OMS_CONNECTIVITY conectividade
-    }
+    A->>N: GET /quantitativointerrupcoesativas
+    N->>N: SSL Termination
+    N->>F: Proxy HTTP :8000
 
-    DBLINK_INDICADORES {
-        IND_UNIVERSOS municipios
-        IND_CONJUNTOS conjuntos
-    }
+    F->>F: Rate Limit Check (10 req/min)
+    F->>F: API Key Validation
 
-    RADAR_DB {
-        API_KEYS autenticacao
-        AUDIT_LOG auditoria
-    }
-```
+    F->>R: GET cache:interrupcoes
 
-### Query Principal (via DBLinks)
-
-```sql
-SELECT
-    ae.num_1 AS id_interrupcao,
-    ae.NUM_CUST AS ucs_afetadas,
-    spt.PLAN_ID AS tipo_programada,
-    iu.CD_UNIVERSO AS codigo_ibge,
-    ic.ID_CONJUNTO AS id_conjunto
-FROM INSERVICE.AGENCY_EVENT@DBLINK_INSERVICE ae
-LEFT JOIN INSERVICE.SWITCH_PLAN_TASKS@DBLINK_INSERVICE spt
-    ON spt.OUTAGE_NUM = ae.num_1
-INNER JOIN INSERVICE.OMS_CONNECTIVITY@DBLINK_INSERVICE oc
-    ON oc.mslink = ae.dev_id
-INNER JOIN INDICADORES.IND_UNIVERSOS@DBLINK_INDICADORES iu
-    ON iu.ID_DISPOSITIVO = ae.dev_id
-    AND iu.CD_TIPO_UNIVERSO = 2  -- Municipio
-INNER JOIN INDICADORES.IND_CONJUNTOS@DBLINK_INDICADORES ic
-    ON ic.ID_DISPOSITIVO = ae.dev_id
-WHERE ae.is_open = 'T'
-  AND ae.ag_id = 370  -- Roraima Energia
-```
-
-## Seguranca
-
-```mermaid
-flowchart TB
-    subgraph Network["Camada de Rede"]
-        HTTPS[HTTPS :443<br/>TLS 1.2+]
-        FIREWALL[Firewall<br/>Whitelist IP ANEEL]
+    alt Cache HIT
+        R-->>F: cached_data
+    else Cache MISS
+        R-->>F: null
+        F->>O: SELECT via DBLink
+        O-->>F: rows
+        F->>R: SET cache:interrupcoes (TTL 300s)
     end
 
-    subgraph Application["Camada de Aplicacao"]
-        RATE[Rate Limiting<br/>10 req/min]
-        AUTH[API Key Auth<br/>x-api-key header]
-        VALID[Input Validation<br/>Pydantic]
-    end
-
-    subgraph Data["Camada de Dados"]
-        PARAM[Parameterized Queries<br/>SQLAlchemy]
-        ENCRYPT[Encrypted Connection<br/>Oracle Native Encryption]
-        SECRETS[Secrets Management<br/>Environment Variables]
-    end
-
-    Network --> Application
-    Application --> Data
-
-    style Network fill:#ffcdd2
-    style Application fill:#fff9c4
-    style Data fill:#c8e6c9
+    F-->>N: JSON Response
+    N-->>A: HTTPS Response
 ```
 
-## Metricas e Monitoramento
+---
 
-| Metrica | Tipo | Descricao |
-|---------|------|-----------|
-| `request_count` | Counter | Total de requisicoes |
-| `request_latency` | Histogram | Latencia das requisicoes |
-| `cache_hits` | Counter | Hits no cache |
-| `cache_misses` | Counter | Misses no cache |
-| `db_query_duration` | Histogram | Tempo de queries Oracle |
-| `rate_limit_exceeded` | Counter | Requisicoes bloqueadas |
-| `active_interrupcoes` | Gauge | Interrupcoes ativas |
+## Monitoramento e Alertas
 
-## SLA e Performance
+### Prometheus - prometheus.yml
 
-| Metrica | Meta | Atual |
-|---------|------|-------|
-| Disponibilidade | 99.5% | - |
-| Latencia P95 | < 2s | - |
-| Taxa de Erro | < 0.1% | - |
-| Cache Hit Ratio | > 80% | - |
-| Rate Limit | 10 req/min | Implementado |
+```yaml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - '/etc/prometheus/alerts/*.yml'
+
+scrape_configs:
+  - job_name: 'radar-api'
+    static_configs:
+      - targets: ['backend:8000']
+    metrics_path: '/metrics'
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+```
+
+### Alertas Criticos
+
+| Alerta | Condicao | Severidade |
+|--------|----------|------------|
+| APIDown | up{job="radar-api"} == 0 por 5min | critical |
+| HighLatency | p95 > 5s por 10min | warning |
+| CacheDown | redis_up == 0 | critical |
+| HighErrorRate | error_rate > 1% por 5min | warning |
+| DataStale | last_update > 35min | warning |
+
+---
 
 ## Comandos de Operacao
 
 ```bash
-# Iniciar servidor (producao)
+# Subir ambiente
 cd /app/radar
-source venv/bin/activate
-uvicorn backend.apps.api_interrupcoes.main:app --host 0.0.0.0 --port 8000 --workers 4
-
-# Health check
-curl http://10.2.1.208:8000/health
-
-# Testar endpoint principal
-curl -H "x-api-key: $API_KEY" http://10.2.1.208:8000/quantitativointerrupcoesativas
+docker-compose up -d
 
 # Ver logs
-journalctl -u radar-api -f
+docker-compose logs -f backend
 
-# Verificar conexao Oracle
-python -c "from backend.shared.infrastructure.database.oracle_pool import oracle_pool; import asyncio; asyncio.run(oracle_pool.health_check())"
+# Health check
+curl https://portal.roraimaenergia.com.br/health
+
+# Testar API ANEEL
+curl -H "x-api-key: $API_KEY" \
+  https://portal.roraimaenergia.com.br/quantitativointerrupcoesativas
+
+# Verificar cache Redis
+docker exec -it radar-redis redis-cli KEYS "*"
+
+# Restart backend
+docker-compose restart backend
+
+# Ver metricas
+curl http://10.2.1.208:9090/metrics
 ```
+
+---
 
 ## Referencias
 
-- [Especificacao API 1 - ANEEL](../api-aneel/API_01_QUANTITATIVO_INTERRUPCOES_ATIVAS.md)
+- [REN 1.137/2025 - Art. 106-107](https://www.aneel.gov.br)
 - [Clean Architecture](../development/01-clean-architecture.md)
 - [TDD](../development/04-tdd-test-driven-development.md)
 - [Infraestrutura](./06-infraestrutura.md)
+- [RAD-228 - Configuracao NGINX](../tasks/mapa-interrupcoes/RAD-228.md)
+- [RAD-229 - Monitoramento](../tasks/mapa-interrupcoes/RAD-229.md)
