@@ -1,0 +1,100 @@
+{
+  "name": "code-review",
+  "version": "1.0.0",
+  "description": "Executa code review automatico com 7 categorias de validacao para o Projeto RADAR",
+  "tier": "validation",
+  "author": "RADAR Team",
+  "dependencies": [],
+  "input_schema": {
+    "taskId": {
+      "type": "string",
+      "required": true,
+      "pattern": "^RAD-[0-9]{3}$",
+      "description": "Task ID para contexto do code review"
+    },
+    "filesChanged": {
+      "type": "array",
+      "required": false,
+      "items": "string",
+      "description": "Lista de arquivos modificados (se vazio, usa git diff --staged)"
+    },
+    "minScore": {
+      "type": "number",
+      "required": false,
+      "default": 85,
+      "min": 0,
+      "max": 100,
+      "description": "Score minimo para aprovacao (0-100)"
+    },
+    "verbose": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Output detalhado com todos os checks"
+    },
+    "categories": {
+      "type": "array",
+      "required": false,
+      "items": {
+        "enum": ["clean_architecture", "solid", "type_safety", "security", "performance", "testing", "documentation"]
+      },
+      "description": "Categorias especificas a validar (default: todas)"
+    }
+  },
+  "output_schema": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "failure", "error"]
+    },
+    "taskId": "string",
+    "score": "number",
+    "approved": "boolean",
+    "categories": [{
+      "name": "string",
+      "score": "number",
+      "weight": "number",
+      "status": "string",
+      "issues": ["string"],
+      "recommendations": ["string"]
+    }],
+    "criticalIssues": ["string"],
+    "warnings": ["string"],
+    "filesReviewed": ["string"],
+    "summary": "string",
+    "message": "string",
+    "error": "string"
+  },
+  "usage": {
+    "example": "/code-review RAD-100 --minScore 85",
+    "notes": [
+      "Valida 7 categorias: Clean Architecture, SOLID, Type Safety, Security, Performance, Testing, Documentation",
+      "Score calculado como media ponderada das categorias",
+      "Retorna approved=true se score >= minScore",
+      "Issues criticos bloqueiam aprovacao mesmo com score alto",
+      "Integra com tdd-development skill no workflow de commit"
+    ]
+  },
+  "categories_weights": {
+    "clean_architecture": 20,
+    "solid": 15,
+    "type_safety": 15,
+    "security": 20,
+    "performance": 10,
+    "testing": 15,
+    "documentation": 5
+  },
+  "radar_specific_checks": {
+    "clean_architecture": [
+      "Domain nao importa Infrastructure",
+      "Domain nao importa FastAPI/SQLAlchemy",
+      "Uso de Protocol (nao ABC)",
+      "Value Objects com @dataclass(frozen=True)"
+    ],
+    "security": [
+      "API Key validada em todos endpoints",
+      "Rate limiting configurado",
+      "Logging de auditoria",
+      "Formato ANEEL em respostas de erro"
+    ]
+  }
+}

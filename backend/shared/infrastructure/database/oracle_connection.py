@@ -15,6 +15,8 @@ from typing import Any, Callable, Optional, TypeVar
 
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.exc import DatabaseError, InterfaceError, OperationalError
+from sqlalchemy.orm import sessionmaker, Session
+from typing import Generator
 
 from backend.shared.infrastructure.logger import get_logger
 
@@ -343,3 +345,49 @@ def get_engine() -> Engine:
         SQLAlchemy Engine
     """
     return get_oracle_connection().get_engine()
+
+
+# ========== Session Factory (Padrao do Projeto de Referencia) ==========
+
+# SessionLocal global (inicializado sob demanda)
+_session_local: Optional[sessionmaker] = None
+
+
+def get_session_factory() -> sessionmaker:
+    """
+    Retorna session factory singleton.
+
+    Returns:
+        sessionmaker configurado com engine Oracle
+    """
+    global _session_local
+    if _session_local is None:
+        _session_local = sessionmaker(
+            bind=get_engine(),
+            expire_on_commit=False,
+        )
+    return _session_local
+
+
+def get_sync_session() -> Generator[Session, None, None]:
+    """
+    Dependency injection para sessao SINCRONA.
+
+    Este e o PADRAO RECOMENDADO para endpoints Oracle.
+    O projeto de referencia (MJQEE-GFUZ) usa este padrao.
+
+    Usage:
+        @router.get("/items")
+        def get_items(session: Session = Depends(get_sync_session)):
+            result = session.execute(text("SELECT ..."))
+            return result.fetchall()
+
+    Yields:
+        Session: SQLAlchemy sync session
+    """
+    SessionLocal = get_session_factory()
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
