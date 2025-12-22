@@ -7,7 +7,6 @@ Verifica padroes de Clean Architecture e boas praticas.
 import json
 import re
 import sys
-from pathlib import Path
 
 # Padroes de import proibidos por camada
 FORBIDDEN_IMPORTS = {
@@ -103,7 +102,6 @@ def main():
         print(f"Erro ao ler JSON: {e}", file=sys.stderr)
         sys.exit(1)
 
-    tool_name = input_data.get("tool_name", "")
     tool_input = input_data.get("tool_input", {})
 
     # Apenas verificar arquivos Python

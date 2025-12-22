@@ -7,8 +7,6 @@ Detecta intencoes e adiciona lembretes sobre padroes.
 import json
 import re
 import sys
-from datetime import datetime
-
 
 # Padroes de deteccao de intencao
 INTENT_PATTERNS = {
