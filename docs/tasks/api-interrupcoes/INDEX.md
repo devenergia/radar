@@ -1,7 +1,7 @@
 # Indice de Tasks - API 1 Interrupcoes
 
 **Projeto:** RADAR - API Quantitativo de Interrupcoes Ativas
-**Total de Tasks:** 26 (RAD-100 a RAD-125)
+**Total de Tasks:** 31 (RAD-100 a RAD-130)
 **Ultima Atualizacao:** 2025-12-19
 
 ---
@@ -13,7 +13,8 @@
 - [Fase 3: Infrastructure Layer](#fase-3-infrastructure-layer-rad-108-a-rad-111)
 - [Fase 4: Interfaces Layer](#fase-4-interfaces-layer-rad-112-a-rad-116)
 - [Fase 5: Testes TDD](#fase-5-testes-tdd-rad-117-a-rad-121)
-- [Fase 6: Seguranca e Compliance](#fase-6-seguranca-e-compliance-rad-122-a-rad-125)
+- [Fase 6: Seguranca e Compliance](#fase-6-seguranca-e-compliance-rad-122-a-rad-125-rad-130)
+- [Fase 7: Infraestrutura de Dados](#fase-7-infraestrutura-de-dados-rad-126-a-rad-129)
 - [Documentos de Referencia](#documentos-de-referencia)
 - [Matriz de Dependencias](#matriz-de-dependencias)
 
@@ -224,28 +225,65 @@
 
 ---
 
-## Fase 6: Seguranca e Compliance (RAD-122 a RAD-125)
+## Fase 6: Seguranca e Compliance (RAD-122 a RAD-125, RAD-130)
 
 | Task | Titulo | Tipo | Prioridade | Dependencias | Arquivo |
 |------|--------|------|------------|--------------|---------|
-| **RAD-122** | Autenticacao API Key | Security | Alta | RAD-113 | [RAD-122.md](./RAD-122.md) |
-| **RAD-123** | Rate Limiting (12 req/min) | Security | Alta | RAD-116 | [RAD-123.md](./RAD-123.md) |
-| **RAD-124** | IP Whitelist ANEEL | Security | Media | RAD-113 | [RAD-124.md](./RAD-124.md) |
-| **RAD-125** | Validacao Final ANEEL | Compliance | Critica | Todas | [RAD-125.md](./RAD-125.md) |
+| **RAD-122** | Autenticacao API Key | Security | Alta | RAD-116 | [RAD-122.md](./RAD-122.md) |
+| **RAD-123** | Rate Limiting (10 req/min) | Security | Alta | RAD-116 | [RAD-123.md](./RAD-123.md) |
+| **RAD-124** | Logging e Auditoria | Infrastructure | Media | RAD-115 | [RAD-124.md](./RAD-124.md) |
+| **RAD-125** | Documentacao OpenAPI | Documentation | Media | RAD-112, RAD-113, RAD-114 | [RAD-125.md](./RAD-125.md) |
+| **RAD-130** | IP Whitelist ANEEL (200.198.220.128/25) | Security | Alta | RAD-116 | [RAD-130.md](./RAD-130.md) |
 
 **Descricao RAD-122:** Implementar validacao de API Key no header x-api-key.
 
-**Descricao RAD-123:** Implementar rate limiting de 12 requisicoes por minuto.
+**Descricao RAD-123:** Implementar rate limiting de 10 requisicoes por minuto.
 
-**Descricao RAD-124:** Implementar whitelist de IPs autorizados da ANEEL.
+**Descricao RAD-130:** Implementar validacao de whitelist de IP ANEEL (200.198.220.128/25), bloqueando IPs nao autorizados.
 
-**Descricao RAD-125:** Validacao final de conformidade com especificacao ANEEL.
+**Descricao RAD-124:** Implementar logging estruturado e auditoria de requisicoes com structlog.
+
+**Descricao RAD-125:** Gerar documentacao OpenAPI completa conforme especificacao ANEEL.
 
 **Entregaveis Fase 6:**
-- Atualizacao de `dependencies.py` com autenticacao
-- Middleware de rate limiting
-- Validacao de IP whitelist
-- Relatorio de conformidade
+- `backend/apps/api_interrupcoes/auth/api_key.py`
+- `backend/apps/api_interrupcoes/rate_limiter.py` ou middleware
+- `backend/apps/api_interrupcoes/security/ip_whitelist.py`
+- `backend/shared/infrastructure/logging/logger.py`
+- `docs/api-specs/openapi-api1-interrupcoes.yaml`
+
+---
+
+## Fase 7: Infraestrutura de Dados (RAD-126 a RAD-129)
+
+Esta fase complementa as anteriores com persistencia em banco de dados para auditoria e otimizacoes de performance.
+
+| Task | Titulo | Tipo | Prioridade | Dependencias | Arquivo |
+|------|--------|------|------------|--------------|---------|
+| **RAD-126** | Configurar Alembic | Infrastructure | Alta | RAD-108 | [RAD-126.md](./RAD-126.md) |
+| **RAD-127** | Tabelas de Auditoria | Database | Alta | RAD-126 | [RAD-127.md](./RAD-127.md) |
+| **RAD-128** | View VW_INTERRUPCAO_FORNECIMENTO | Database | Alta | RAD-126, RAD-127 | [RAD-128.md](./RAD-128.md) |
+| **RAD-129** | Entity Consulta | Domain | Alta | RAD-103, RAD-127 | [RAD-129.md](./RAD-129.md) |
+
+**Descricao RAD-126:** Configurar Alembic como ferramenta de migracao de banco Oracle.
+
+**Descricao RAD-127:** Criar tabelas TOKEN_ACESSO, TIPO_CONSULTA, CONSULTA, INTERRUPCAO_ATIVA para auditoria.
+
+**Descricao RAD-128:** Criar view otimizada com CTEs para agregacao de interrupcoes no banco.
+
+**Descricao RAD-129:** Implementar Entity Consulta no dominio para auditoria de requisicoes.
+
+**Entregaveis Fase 7:**
+- `alembic.ini`
+- `backend/shared/infrastructure/database/migrations/`
+- `backend/shared/infrastructure/database/models.py`
+- `backend/shared/domain/entities/consulta.py`
+
+**Relacionamento com Fases Anteriores:**
+- **RAD-127** complementa **RAD-122** (persistencia de tokens no banco)
+- **RAD-127** complementa **RAD-124** (persistencia de consultas no banco)
+- **RAD-128** complementa **RAD-109** (agregacao no banco vs. em memoria)
+- **RAD-129** complementa **RAD-102** (segue mesmo padrao de Entity)
 
 ---
 
@@ -254,6 +292,8 @@
 | Documento | Descricao | Arquivo |
 |-----------|-----------|---------|
 | Plano Geral | Visao geral do projeto | [PLAN.md](./PLAN.md) |
+| **Visibilidade Integrada** | **Visao completa: APIs ANEEL + Dashboard/Mapa RR** | [../VISIBILIDADE_INTEGRADA_PROJETO_RADAR.md](../VISIBILIDADE_INTEGRADA_PROJETO_RADAR.md) |
+| **Aderencia ao Design** | **Validacao tasks vs documentos de design** | [ADERENCIA_DESIGN.md](./ADERENCIA_DESIGN.md) |
 | Status de Execucao | Controle de progresso | [EXECUTION_STATUS.md](./EXECUTION_STATUS.md) |
 | Especificacao API | Detalhes da API ANEEL | [../../api-specs/01-interrupcoes.md](../../api-specs/01-interrupcoes.md) |
 | OpenAPI Spec | Swagger/OpenAPI | [../../api-specs/openapi-api1-interrupcoes.yaml](../../api-specs/openapi-api1-interrupcoes.yaml) |
@@ -289,10 +329,15 @@
 | RAD-119 | RAD-107 | - |
 | RAD-120 | RAD-109 | - |
 | RAD-121 | RAD-116 | - |
-| RAD-122 | RAD-113 | RAD-125 |
-| RAD-123 | RAD-116 | RAD-125 |
-| RAD-124 | RAD-113 | RAD-125 |
-| RAD-125 | Todas | - |
+| RAD-122 | RAD-116 | RAD-127 |
+| RAD-123 | RAD-116 | - |
+| RAD-124 | RAD-115 | RAD-127 |
+| RAD-125 | RAD-112, RAD-113, RAD-114 | - |
+| RAD-126 | RAD-108 | RAD-127 |
+| RAD-127 | RAD-126 | RAD-128, RAD-129 |
+| RAD-128 | RAD-126, RAD-127 | - |
+| RAD-129 | RAD-103, RAD-127 | - |
+| RAD-130 | RAD-116 | - |
 
 ---
 
@@ -300,14 +345,16 @@
 
 | Metrica | Valor |
 |---------|-------|
-| Total de Tasks | 26 |
-| Tasks Domain | 5 |
+| Total de Tasks | 31 |
+| Tasks Domain | 6 |
 | Tasks Application | 3 |
-| Tasks Infrastructure | 4 |
+| Tasks Infrastructure | 6 |
 | Tasks Interfaces | 5 |
 | Tasks Testes | 5 |
-| Tasks Seguranca | 4 |
-| Fases | 6 |
+| Tasks Seguranca | 3 |
+| Tasks Database | 2 |
+| Tasks Documentation | 1 |
+| Fases | 7 |
 | Coverage Minimo | 80% |
 
 ---
@@ -329,11 +376,12 @@
 |------|-----------|
 | **Domain** | Camada de dominio (entities, VOs) |
 | **Application** | Camada de aplicacao (use cases, services) |
-| **Infrastructure** | Camada de infraestrutura (DB, cache) |
+| **Infrastructure** | Camada de infraestrutura (conexao, cache, config) |
+| **Database** | Migracoes, tabelas, views Oracle |
 | **Interfaces** | Camada de interfaces (API, schemas) |
 | **Test** | Testes automatizados |
 | **Security** | Seguranca e autenticacao |
-| **Compliance** | Conformidade com ANEEL |
+| **Documentation** | Documentacao OpenAPI, specs |
 
 ---
 

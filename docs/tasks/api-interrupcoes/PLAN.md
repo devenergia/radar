@@ -37,7 +37,8 @@ GET /quantitativointerrupcoesativas
 | Repository | Protocol (typing) | Inversao de dependencia |
 | Cache | Memory (5 min TTL) | Performance ANEEL |
 | Autenticacao | API Key (x-api-key) | Requisito ANEEL |
-| Rate Limit | 12 req/min | Requisito ANEEL |
+| Rate Limit | 10 req/min | Recomendacao de protecao |
+| IP Whitelist | 200.198.220.128/25 | Requisito ANEEL (Secao 6) |
 
 ---
 
@@ -111,14 +112,24 @@ GET /quantitativointerrupcoesativas
 | RAD-120 | Testes Integration - Repository | Critica | [RAD-120.md](./RAD-120.md) |
 | RAD-121 | Testes E2E - API | Critica | [RAD-121.md](./RAD-121.md) |
 
-### Fase 6: Seguranca e Compliance (RAD-122 a RAD-125)
+### Fase 6: Seguranca e Compliance (RAD-122 a RAD-125, RAD-130)
 
 | Task | Descricao | Prioridade | Arquivo |
 |------|-----------|------------|---------|
 | RAD-122 | Autenticacao API Key | Alta | [RAD-122.md](./RAD-122.md) |
-| RAD-123 | Rate Limiting (12 req/min) | Alta | [RAD-123.md](./RAD-123.md) |
-| RAD-124 | IP Whitelist ANEEL | Media | [RAD-124.md](./RAD-124.md) |
-| RAD-125 | Validacao Final ANEEL | Critica | [RAD-125.md](./RAD-125.md) |
+| RAD-123 | Rate Limiting (10 req/min) | Alta | [RAD-123.md](./RAD-123.md) |
+| RAD-124 | Logging e Auditoria | Media | [RAD-124.md](./RAD-124.md) |
+| RAD-125 | Documentacao OpenAPI | Media | [RAD-125.md](./RAD-125.md) |
+| RAD-130 | IP Whitelist ANEEL (200.198.220.128/25) | Alta | [RAD-130.md](./RAD-130.md) |
+
+### Fase 7: Infraestrutura de Dados (RAD-126 a RAD-129)
+
+| Task | Descricao | Prioridade | Arquivo |
+|------|-----------|------------|---------|
+| RAD-126 | Configurar Alembic para Migracoes | Alta | [RAD-126.md](./RAD-126.md) |
+| RAD-127 | Criar Tabelas de Auditoria | Alta | [RAD-127.md](./RAD-127.md) |
+| RAD-128 | Criar View VW_INTERRUPCAO_FORNECIMENTO | Alta | [RAD-128.md](./RAD-128.md) |
+| RAD-129 | Implementar Entity Consulta | Alta | [RAD-129.md](./RAD-129.md) |
 
 ---
 
@@ -165,7 +176,15 @@ RAD-103      |
     |
     +---> RAD-117 a RAD-121 (Testes)
     |
-    +---> RAD-122 a RAD-125 (Seguranca)
+    +---> RAD-122 a RAD-125, RAD-130 (Seguranca)
+    |
+    +---> RAD-126 a RAD-129 (Infraestrutura de Dados)
+              |
+              +---> RAD-126 (Alembic) ---> RAD-127 (Tabelas Auditoria)
+              |                      |
+              |                      +---> RAD-128 (View Interrupcao)
+              |
+              +---> RAD-127 ---> RAD-129 (Entity Consulta)
 ```
 
 ---
@@ -213,13 +232,25 @@ RAD-103      |
 | Testes Unitarios | 100% pass | Sim |
 | Testes Integracao | 100% pass | Sim |
 | Tempo de Resposta API | < 2s | Sim |
-| Rate Limiting | 12 req/min | Sim |
+| Rate Limiting | 10 req/min | Sim |
+| IP Whitelist | 200.198.220.128/25 | Sim |
 
 ---
 
 ## Referencias
 
+### Visao Integrada do Projeto
+- **[VISIBILIDADE_INTEGRADA_PROJETO_RADAR.md](../VISIBILIDADE_INTEGRADA_PROJETO_RADAR.md)** - Visao completa: APIs ANEEL + Dashboard/Mapa RR + Mapa de Roraima
+
+### Aderencia ao Design
+- **[ADERENCIA_DESIGN.md](./ADERENCIA_DESIGN.md)** - Validacao tasks vs documentos de design (diagramas, arquitetura, integracao)
+
+### Documentos Oficiais ANEEL
+- [Oficio Circular 14/2025-SFE/ANEEL V4](../../official/Oficio_Circular_14-2025_SMA-ANEEL_RADAR.pdf) - Especificacao tecnica oficial
+
+### Documentacao Interna
 - [Especificacao API 1 - ANEEL](../../api-specs/01-interrupcoes.md)
+- [Seguranca da API](../../api-specs/04-seguranca.md)
 - [OpenAPI Specification](../../api-specs/openapi-api1-interrupcoes.yaml)
 - [Plano de Testes](../../testing/api1-test-plan.md)
 - [Clean Architecture](../../development/01-clean-architecture.md)
