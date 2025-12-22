@@ -14,23 +14,37 @@ Este comando inicia uma task especifica do projeto RADAR seguindo o workflow de 
 
 ## Workflow de Inicio
 
-### 1. Validar Task ID
+### 1. Validar Task ID e Identificar Projeto
 
 ```bash
-# Verificar se task existe
-ls docs/tasks/api-interrupcoes/RAD-*.md | grep "$ARGUMENTS"
+# Identificar projeto baseado no Task ID:
+# - RAD-1XX (100-199) -> api-interrupcoes
+# - RAD-2XX (200-299) -> mapa-interrupcoes
 
-# Se nao existir, informar usuario
+# Extrair numero da task
+TASK_NUM=$(echo "$ARGUMENTS" | grep -oP '\d+')
+
+if [ "$TASK_NUM" -ge 100 ] && [ "$TASK_NUM" -lt 200 ]; then
+    PROJECT="api-interrupcoes"
+elif [ "$TASK_NUM" -ge 200 ] && [ "$TASK_NUM" -lt 300 ]; then
+    PROJECT="mapa-interrupcoes"
+else
+    echo "Task ID invalido: $ARGUMENTS"
+    exit 1
+fi
+
+# Verificar se task existe
+ls docs/tasks/$PROJECT/RAD-*.md | grep "$ARGUMENTS"
 ```
 
 ### 2. Verificar Dependencias
 
 ```bash
-# Ler EXECUTION_STATUS.md
-cat docs/tasks/api-interrupcoes/EXECUTION_STATUS.md
+# Ler EXECUTION_STATUS.md do projeto correto
+cat docs/tasks/$PROJECT/EXECUTION_STATUS.md
 
 # Verificar se dependencias estao CONCLUIDO
-grep "CONCLUIDO" docs/tasks/api-interrupcoes/EXECUTION_STATUS.md
+grep "CONCLUIDO" docs/tasks/$PROJECT/EXECUTION_STATUS.md
 ```
 
 Se alguma dependencia nao estiver CONCLUIDA -> PARAR e informar.
@@ -38,8 +52,8 @@ Se alguma dependencia nao estiver CONCLUIDA -> PARAR e informar.
 ### 3. Ler Especificacao da Task
 
 ```bash
-# Ler arquivo da task
-cat docs/tasks/api-interrupcoes/$ARGUMENTS.md
+# Ler arquivo da task do projeto correto
+cat docs/tasks/$PROJECT/$ARGUMENTS.md
 ```
 
 Validar presenca de:
@@ -51,6 +65,8 @@ Validar presenca de:
 
 ### 4. Selecionar Subagente Correto
 
+**API Interrupcoes (RAD-1XX):**
+
 | Tipo de Task | Subagente | Tasks |
 |--------------|-----------|-------|
 | Domain (Entities, VOs) | backend-architect | RAD-100 a RAD-104 |
@@ -58,6 +74,18 @@ Validar presenca de:
 | Interfaces (FastAPI, Routes) | backend-architect | RAD-112 a RAD-118 |
 | Testes | test-engineer | RAD-119 a RAD-121 |
 | Seguranca | security-auditor | RAD-122 a RAD-125 |
+
+**Mapa Interrupcoes (RAD-2XX):**
+
+| Tipo de Task | Subagente | Tasks |
+|--------------|-----------|-------|
+| Domain (VOs, Entity, Services) | backend-architect | RAD-200 a RAD-204 |
+| Application (Protocols, Use Cases) | backend-architect | RAD-205 a RAD-207 |
+| Infrastructure (Oracle, Scheduler) | database-optimizer | RAD-208 a RAD-211 |
+| API (Schemas, Endpoints) | backend-architect | RAD-212 a RAD-215 |
+| Frontend (React, Leaflet) | backend-architect | RAD-216 a RAD-222 |
+| Testes | test-engineer | RAD-223 a RAD-227 |
+| Deploy | backend-architect | RAD-228 a RAD-230 |
 
 ### 5. Criar Branch
 

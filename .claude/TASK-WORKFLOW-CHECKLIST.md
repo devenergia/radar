@@ -1,7 +1,7 @@
 # Checklist de Workflow para Tasks RADAR
 
 **Projeto:** Sistema de Monitoramento de Indicadores ANEEL
-**Versao:** 1.0.0
+**Versao:** 1.1.0
 **Ultima Atualizacao:** 2025-12-19
 
 ---
@@ -9,6 +9,17 @@
 ## Visao Geral
 
 Este documento define o checklist obrigatorio para execucao de tasks no Projeto RADAR. Todo desenvolvimento DEVE seguir este workflow para garantir qualidade, rastreabilidade e consistencia.
+
+### Projetos Suportados
+
+| Projeto | Tasks | Base Legal | Status |
+|---------|-------|------------|--------|
+| **API Interrupcoes** | RAD-100 a RAD-130 | Oficio Circular 14/2025-SFE/ANEEL | Em Desenvolvimento |
+| **Mapa Interrupcoes** | RAD-200 a RAD-230 | REN 1.137/2025 Art. 106-107 | Planejado |
+
+**Identificacao automatica de projeto:**
+- RAD-1XX (100-199) -> `docs/tasks/api-interrupcoes/`
+- RAD-2XX (200-299) -> `docs/tasks/mapa-interrupcoes/`
 
 ---
 
@@ -19,11 +30,17 @@ Este documento define o checklist obrigatorio para execucao de tasks no Projeto 
 #### [ ] Passo 1: Identificar Proxima Task
 
 ```bash
+# Identificar projeto (automatico baseado no Task ID)
+# RAD-1XX -> api-interrupcoes
+# RAD-2XX -> mapa-interrupcoes
+
+PROJECT="api-interrupcoes"  # ou "mapa-interrupcoes"
+
 # Verificar task pendente
-cat docs/tasks/api-interrupcoes/EXECUTION_STATUS.md | grep "PENDENTE"
+cat docs/tasks/$PROJECT/EXECUTION_STATUS.md | grep "PENDENTE"
 
 # OU consultar INDEX para ver dependencias
-cat docs/tasks/api-interrupcoes/INDEX.md
+cat docs/tasks/$PROJECT/INDEX.md
 ```
 
 **Criterios de selecao:**
@@ -31,20 +48,32 @@ cat docs/tasks/api-interrupcoes/INDEX.md
 - Todas as dependencias estao `CONCLUIDO`
 - Nao ha bloqueios externos
 
-**Ordem de execucao por Fase:**
+**Ordem de execucao - API Interrupcoes (RAD-1XX):**
 | Fase | Tasks | Foco |
 |------|-------|------|
 | 1 - Domain | RAD-100 a RAD-104 | Entities, VOs, Services |
-| 2 - Infrastructure | RAD-105 a RAD-111 | Oracle, Cache, Repos |
-| 3 - Interfaces | RAD-112 a RAD-118 | FastAPI, Routes, Schemas |
-| 4 - Testes | RAD-119 a RAD-121 | Unit, Integration, E2E |
-| 5 - Seguranca | RAD-122 a RAD-125 | Auth, Rate Limit, Logs |
+| 2 - Application | RAD-105 a RAD-107 | Protocols, Use Cases |
+| 3 - Infrastructure | RAD-108 a RAD-111 | Oracle, Cache, Repos |
+| 4 - Interfaces | RAD-112 a RAD-116 | FastAPI, Routes, Schemas |
+| 5 - Testes | RAD-117 a RAD-121 | Unit, Integration, E2E |
+| 6 - Seguranca | RAD-122 a RAD-130 | Auth, Rate Limit, Logs |
+
+**Ordem de execucao - Mapa Interrupcoes (RAD-2XX):**
+| Fase | Tasks | Foco |
+|------|-------|------|
+| 1 - Domain | RAD-200 a RAD-204 | VOs, Entity, Services |
+| 2 - Application | RAD-205 a RAD-207 | Protocols, Use Cases |
+| 3 - Infrastructure | RAD-208 a RAD-211 | Oracle, MV, Scheduler, GeoJSON |
+| 4 - API | RAD-212 a RAD-215 | Schemas, Endpoints |
+| 5 - Frontend | RAD-216 a RAD-222 | React, Leaflet, Dashboard |
+| 6 - Testes | RAD-223 a RAD-227 | Unit, Integration, E2E, WCAG |
+| 7 - Deploy | RAD-228 a RAD-230 | NGINX, Monitoring, Docs |
 
 #### [ ] Passo 2: Ler Especificacao Completa
 
 ```bash
-# Ler arquivo da task
-cat docs/tasks/api-interrupcoes/RAD-XXX.md
+# Ler arquivo da task do projeto correto
+cat docs/tasks/$PROJECT/RAD-XXX.md
 ```
 
 **Validar presenca de:**
@@ -271,8 +300,12 @@ mypy backend/
 
 #### [ ] Passo 13: Atualizar Documentacao
 
+**Identificar projeto:**
+- RAD-1XX -> `docs/tasks/api-interrupcoes/EXECUTION_STATUS.md`
+- RAD-2XX -> `docs/tasks/mapa-interrupcoes/EXECUTION_STATUS.md`
+
 **Arquivos a atualizar:**
-- [ ] `EXECUTION_STATUS.md` - Status da task
+- [ ] `docs/tasks/$PROJECT/EXECUTION_STATUS.md` - Status da task
 - [ ] Docstrings no codigo
 - [ ] OpenAPI descriptions (se API)
 

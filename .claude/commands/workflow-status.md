@@ -17,12 +17,21 @@ git branch --show-current
 
 # Extrair task ID da branch
 # feat/rad-100/entity-interrupcao -> RAD-100
+
+# Identificar projeto baseado no task ID:
+# RAD-1XX -> api-interrupcoes
+# RAD-2XX -> mapa-interrupcoes
 ```
 
 ### 2. Status do EXECUTION_STATUS
 
 ```bash
-cat docs/tasks/api-interrupcoes/EXECUTION_STATUS.md
+# Mostrar status de ambos os projetos
+echo "=== API Interrupcoes (RAD-1XX) ==="
+cat docs/tasks/api-interrupcoes/EXECUTION_STATUS.md | head -30
+
+echo "=== Mapa Interrupcoes (RAD-2XX) ==="
+cat docs/tasks/mapa-interrupcoes/EXECUTION_STATUS.md | head -30
 ```
 
 Mostrar:
@@ -30,14 +39,27 @@ Mostrar:
 - Task EM_ANDAMENTO (se houver)
 - Proximas tasks PENDENTES
 
-### 3. Progresso do Projeto
+### 3. Progresso dos Projetos
 
+**API Interrupcoes (RAD-1XX):**
 ```
 Fase 1 - Domain:        [X] RAD-100  [ ] RAD-101  [ ] RAD-102  [ ] RAD-103  [ ] RAD-104
-Fase 2 - Infra:         [ ] RAD-105  [ ] RAD-106  [ ] RAD-107  [ ] RAD-108  [ ] RAD-109  [ ] RAD-110  [ ] RAD-111
-Fase 3 - Interfaces:    [ ] RAD-112  [ ] RAD-113  [ ] RAD-114  [ ] RAD-115  [ ] RAD-116  [ ] RAD-117  [ ] RAD-118
-Fase 4 - Testes:        [ ] RAD-119  [ ] RAD-120  [ ] RAD-121
-Fase 5 - Seguranca:     [ ] RAD-122  [ ] RAD-123  [ ] RAD-124  [ ] RAD-125
+Fase 2 - Application:   [ ] RAD-105  [ ] RAD-106  [ ] RAD-107
+Fase 3 - Infra:         [ ] RAD-108  [ ] RAD-109  [ ] RAD-110  [ ] RAD-111
+Fase 4 - Interfaces:    [ ] RAD-112  [ ] RAD-113  [ ] RAD-114  [ ] RAD-115  [ ] RAD-116
+Fase 5 - Testes:        [ ] RAD-117  [ ] RAD-118  [ ] RAD-119  [ ] RAD-120  [ ] RAD-121
+Fase 6 - Seguranca:     [ ] RAD-122  [ ] RAD-123  [ ] RAD-124  [ ] RAD-125
+```
+
+**Mapa Interrupcoes (RAD-2XX):**
+```
+Fase 1 - Domain:        [ ] RAD-200  [ ] RAD-201  [ ] RAD-202  [ ] RAD-203  [ ] RAD-204
+Fase 2 - Application:   [ ] RAD-205  [ ] RAD-206  [ ] RAD-207
+Fase 3 - Infra:         [ ] RAD-208  [ ] RAD-209  [ ] RAD-210  [ ] RAD-211
+Fase 4 - API:           [ ] RAD-212  [ ] RAD-213  [ ] RAD-214  [ ] RAD-215
+Fase 5 - Frontend:      [ ] RAD-216  [ ] RAD-217  [ ] RAD-218  [ ] RAD-219  [ ] RAD-220  [ ] RAD-221  [ ] RAD-222
+Fase 6 - Testes:        [ ] RAD-223  [ ] RAD-224  [ ] RAD-225  [ ] RAD-226  [ ] RAD-227
+Fase 7 - Deploy:        [ ] RAD-228  [ ] RAD-229  [ ] RAD-230
 ```
 
 ### 4. Estado do Git

@@ -25,7 +25,20 @@ Antes de finalizar, verificar:
 
 ## Passo 13: Atualizar EXECUTION_STATUS.md
 
-Editar `docs/tasks/api-interrupcoes/EXECUTION_STATUS.md`:
+**Identificar projeto baseado no Task ID:**
+```bash
+# RAD-1XX (100-199) -> api-interrupcoes
+# RAD-2XX (200-299) -> mapa-interrupcoes
+
+TASK_NUM=$(echo "$ARGUMENTS" | grep -oP '\d+')
+if [ "$TASK_NUM" -ge 100 ] && [ "$TASK_NUM" -lt 200 ]; then
+    PROJECT="api-interrupcoes"
+elif [ "$TASK_NUM" -ge 200 ] && [ "$TASK_NUM" -lt 300 ]; then
+    PROJECT="mapa-interrupcoes"
+fi
+```
+
+Editar `docs/tasks/$PROJECT/EXECUTION_STATUS.md`:
 
 ```markdown
 | $ARGUMENTS | Titulo da Task | `[X]` CONCLUIDO | YYYY-MM-DD | - |

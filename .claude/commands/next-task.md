@@ -14,23 +14,35 @@ Este comando busca a proxima task disponivel e executa o fluxo profissional de 1
 #### Passo 1: Identificar Proxima Task
 
 ```bash
-# Ler EXECUTION_STATUS.md
-cat docs/tasks/api-interrupcoes/EXECUTION_STATUS.md
+# IMPORTANTE: Escolher projeto para buscar proxima task
+# Projetos disponiveis:
+# - api-interrupcoes (RAD-100 a RAD-130)
+# - mapa-interrupcoes (RAD-200 a RAD-230)
+
+# Se usuario especificou projeto via argumento:
+PROJECT="${1:-api-interrupcoes}"
+
+# Ler EXECUTION_STATUS.md do projeto
+cat docs/tasks/$PROJECT/EXECUTION_STATUS.md
 
 # Encontrar primeira task "PENDENTE" seguindo ordem de execucao
-grep "PENDENTE" docs/tasks/api-interrupcoes/EXECUTION_STATUS.md
+grep "PENDENTE" docs/tasks/$PROJECT/EXECUTION_STATUS.md
 
 # Verificar dependencias no INDEX.md
-cat docs/tasks/api-interrupcoes/INDEX.md
+cat docs/tasks/$PROJECT/INDEX.md
 ```
+
+**Detectar projeto automaticamente:**
+- Se branch atual contem `rad-1` -> api-interrupcoes
+- Se branch atual contem `rad-2` -> mapa-interrupcoes
 
 Se dependencia nao esta CONCLUIDO -> PARAR e informar
 
 #### Passo 2: Ler Documentacao
 
 ```bash
-# Ler arquivo da task
-cat docs/tasks/api-interrupcoes/RAD-XXX.md
+# Ler arquivo da task do projeto
+cat docs/tasks/$PROJECT/RAD-XXX.md
 
 # Ler guias de desenvolvimento
 cat docs/development/01-clean-architecture.md
@@ -54,6 +66,8 @@ Validar presenca de:
 | FastAPI/Routes | backend-architect | fastapi, route, endpoint, schema |
 | Testes | test-engineer | test, pytest, coverage |
 | Seguranca | security-auditor | auth, rate limit, logging |
+| Frontend (React/Leaflet) | backend-architect | react, component, leaflet, frontend |
+| Deploy (NGINX/Docker) | backend-architect | nginx, docker, deploy |
 
 ---
 
@@ -180,9 +194,13 @@ mypy backend/
 
 #### Passo 13: Atualizar EXECUTION_STATUS.md
 
-Editar docs/tasks/api-interrupcoes/EXECUTION_STATUS.md:
+Editar `docs/tasks/$PROJECT/EXECUTION_STATUS.md`:
 - Mudar status da task para "CONCLUIDO"
 - Atualizar data de conclusao
+
+**Identificar projeto:**
+- RAD-1XX -> `docs/tasks/api-interrupcoes/EXECUTION_STATUS.md`
+- RAD-2XX -> `docs/tasks/mapa-interrupcoes/EXECUTION_STATUS.md`
 
 #### Passo 14: Criar Commit
 
