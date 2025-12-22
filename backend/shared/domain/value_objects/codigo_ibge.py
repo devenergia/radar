@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar, Final
+from typing import ClassVar
 
 from backend.shared.domain.result import Result
 
@@ -41,8 +41,8 @@ class CodigoIBGE:
         1400704,  # Uiramuta
     )
 
-    MIN_VALUE: Final[int] = 1000000
-    MAX_VALUE: Final[int] = 9999999
+    MIN_VALUE: ClassVar[int] = 1000000
+    MAX_VALUE: ClassVar[int] = 9999999
 
     @classmethod
     def create(cls, codigo: int) -> Result[CodigoIBGE]:
