@@ -7,7 +7,7 @@ o dominio define a interface, a infraestrutura implementa.
 Regras:
 - NAO importar SQLAlchemy, oracledb ou outros frameworks
 - Retornar entidades de dominio (Interrupcao)
-- Metodos async para operacoes de I/O
+- Metodos SINCRONOS (padrao do projeto de referencia MJQEE-GFUZ)
 """
 
 from __future__ import annotations
@@ -27,6 +27,9 @@ class InterrupcaoRepository(Protocol):
     Define contrato que deve ser implementado pela camada de infraestrutura.
     O dominio depende desta interface, nao de implementacoes concretas (DIP).
 
+    PADRAO: Metodos SINCRONOS (nao async) conforme projeto de referencia.
+    Endpoints que usam este repositorio devem ser `def`, nao `async def`.
+
     Implementacoes concretas:
     - OracleInterrupcaoRepository (backend/apps/api_interrupcoes/repositories/)
 
@@ -35,11 +38,11 @@ class InterrupcaoRepository(Protocol):
             def __init__(self, repository: InterrupcaoRepository) -> None:
                 self._repository = repository
 
-            async def execute(self) -> list[Interrupcao]:
-                return await self._repository.buscar_ativas()
+            def execute(self) -> list[Interrupcao]:
+                return self._repository.buscar_ativas()
     """
 
-    async def buscar_ativas(self) -> list[Interrupcao]:
+    def buscar_ativas(self) -> list[Interrupcao]:
         """
         Busca todas as interrupcoes ativas no momento.
 
@@ -56,7 +59,7 @@ class InterrupcaoRepository(Protocol):
         """
         ...
 
-    async def buscar_por_municipio(
+    def buscar_por_municipio(
         self,
         codigo_ibge: CodigoIBGE,
     ) -> list[Interrupcao]:
@@ -74,7 +77,7 @@ class InterrupcaoRepository(Protocol):
         """
         ...
 
-    async def buscar_por_conjunto(
+    def buscar_por_conjunto(
         self,
         id_conjunto: int,
     ) -> list[Interrupcao]:
@@ -92,7 +95,7 @@ class InterrupcaoRepository(Protocol):
         """
         ...
 
-    async def buscar_historico(
+    def buscar_historico(
         self,
         data_inicio: datetime,
         data_fim: datetime,
