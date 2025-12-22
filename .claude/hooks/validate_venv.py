@@ -46,10 +46,10 @@ def main() -> None:
 
     # Verificar se esta usando o venv correto
     uses_correct_venv = (
-        PROJECT_VENV in command or
-        VENV_SCRIPTS in command or
-        "venv\\Scripts\\" in command or
-        "venv/Scripts/" in command
+        PROJECT_VENV in command
+        or VENV_SCRIPTS in command
+        or "venv\\Scripts\\" in command
+        or "venv/Scripts/" in command
     )
 
     # Comandos com caminho absoluto do venv sao permitidos
@@ -73,10 +73,7 @@ Exemplo correto:
   {VENV_SCRIPTS}\\pip.exe install package-name
 """
 
-    print(json.dumps({
-        "decision": "block",
-        "reason": error_msg.strip()
-    }))
+    print(json.dumps({"decision": "block", "reason": error_msg.strip()}))
 
 
 if __name__ == "__main__":
