@@ -2,7 +2,7 @@
 
 **Projeto:** RADAR - API Quantitativo de Interrupcoes Ativas
 **Inicio:** 2025-12-19
-**Ultima Atualizacao:** 2025-12-19 (REVISADO)
+**Ultima Atualizacao:** 2025-12-22
 
 ---
 
@@ -10,13 +10,13 @@
 
 ```
 Fase 1 (Domain):        [██████████] 5/5  (100%) - COMPLETA
-Fase 2 (Application):   [████░░░░░░] 1/3  (33%)  - FALTAM PROTOCOLS/SERVICES
+Fase 2 (Application):   [██████░░░░] 2/3  (66%)  - FALTA RAD-106
 Fase 3 (Infrastructure):[██████░░░░] 3/4  (75%)  - RAD-109 REQUER REFATORACAO
 Fase 4 (Interfaces):    [██████████] 5/5  (100%) - EXISTENTE
 Fase 5 (Testes):        [░░░░░░░░░░] 0/5  (0%)   - CRITICO: 0 TESTES
 Fase 6 (Seguranca):     [██░░░░░░░░] 1/4  (25%)  - PARCIAL
 ─────────────────────────────────────────────────────────────
-TOTAL:                  [██████░░░░] 15/26 (58%)
+TOTAL:                  [██████░░░░] 16/26 (62%)
 ```
 
 > **ATENCAO:** Status revisado em 2025-12-19. Identificadas inconsistencias
@@ -72,22 +72,22 @@ TOTAL:                  [██████░░░░] 15/26 (58%)
 | Metrica | Valor |
 |---------|-------|
 | Total Tasks | 3 |
-| Concluidas | 1 |
+| Concluidas | 2 |
 | Em Progresso | 0 |
 | Bloqueadas | 0 |
-| Progresso | 33% |
+| Progresso | 66% |
 
 ### Status Detalhado
 
 | Task | Titulo | Status | Inicio | Fim | Observacoes |
 |------|--------|--------|--------|-----|-------------|
-| RAD-105 | Domain Service InterrupcaoAggregator | `[ ]` **PENDENTE** | - | - | **CRIAR** em `shared/domain/services/` |
+| RAD-105 | Domain Service InterrupcaoAggregator | `[X]` CONCLUIDO | 2025-12-22 | 2025-12-22 | `shared/domain/services/interrupcao_aggregator.py` - 16 testes, 100% coverage |
 | RAD-106 | Protocol CacheService | `[ ]` **PENDENTE** | - | - | **CRIAR** em `shared/domain/protocols/` |
 | RAD-107 | Use Case GetInterrupcoesAtivas | `[E]` EXISTENTE | - | - | `apps/api_interrupcoes/use_cases/` |
 
 ### Pendencias Fase 2
 
-- [ ] **RAD-105**: Criar Domain Service InterrupcaoAggregator
+- [x] **RAD-105**: Domain Service InterrupcaoAggregator criado (2025-12-22)
 - [ ] **RAD-106**: Criar Protocol CacheService
 
 ---
@@ -290,6 +290,8 @@ TOTAL:                  [██████░░░░] 15/26 (58%)
 | 2025-12-22 | RAD-104 | Protocol criado | InterrupcaoRepository em shared/domain/repositories/ |
 | 2025-12-22 | RAD-104 | Testes criados | 12 testes passando |
 | 2025-12-22 | - | Bug fix CodigoIBGE | Corrigido Final -> ClassVar |
+| 2025-12-22 | RAD-105 | Domain Service criado | InterrupcaoAggregatorService + InterrupcaoAgregada |
+| 2025-12-22 | RAD-105 | Testes TDD | 16 testes passando, 100% coverage |
 
 ---
 
