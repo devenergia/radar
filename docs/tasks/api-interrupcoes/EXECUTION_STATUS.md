@@ -2,7 +2,7 @@
 
 **Projeto:** RADAR - API Quantitativo de Interrupcoes Ativas
 **Inicio:** 2025-12-19
-**Ultima Atualizacao:** 2025-12-22 (RAD-120 concluido)
+**Ultima Atualizacao:** 2025-12-22 (RAD-121 concluido)
 
 ---
 
@@ -13,10 +13,10 @@ Fase 1 (Domain):        [██████████] 5/5  (100%) - COMPLETA
 Fase 2 (Application):   [██████████] 3/3  (100%) - COMPLETA
 Fase 3 (Infrastructure):[██████░░░░] 3/4  (75%)  - RAD-109 REQUER REFATORACAO
 Fase 4 (Interfaces):    [██████████] 5/5  (100%) - EXISTENTE
-Fase 5 (Testes):        [████████░░] 4/5  (80%)  - RAD-117, RAD-118, RAD-119, RAD-120 CONCLUIDOS
+Fase 5 (Testes):        [██████████] 5/5  (100%) - COMPLETA
 Fase 6 (Seguranca):     [██░░░░░░░░] 1/4  (25%)  - PARCIAL
 ─────────────────────────────────────────────────────────────
-TOTAL:                  [████████░░] 21/26 (81%)
+TOTAL:                  [████████░░] 22/26 (85%)
 ```
 
 > **ATENCAO:** Status revisado em 2025-12-19. Identificadas inconsistencias
@@ -158,10 +158,10 @@ TOTAL:                  [████████░░] 21/26 (81%)
 | Metrica | Valor |
 |---------|-------|
 | Total Tasks | 5 |
-| Concluidas | 4 |
+| Concluidas | 5 |
 | Em Progresso | 0 |
 | Bloqueadas | 0 |
-| Progresso | 80% |
+| Progresso | 100% |
 
 ### Status Detalhado
 
@@ -171,17 +171,17 @@ TOTAL:                  [████████░░] 21/26 (81%)
 | RAD-118 | Testes Unit - Entity | `[X]` CONCLUIDO | 2025-12-22 | 2025-12-22 | 26 testes, 100% coverage |
 | RAD-119 | Testes Unit - Use Case | `[X]` CONCLUIDO | 2025-12-22 | 2025-12-22 | 17 testes, 98% coverage |
 | RAD-120 | Testes Integration - Repository | `[X]` CONCLUIDO | 2025-12-22 | 2025-12-22 | 19 testes, 100% coverage |
-| RAD-121 | Testes E2E - API | `[ ]` PENDENTE | - | - | CRITICO - 0 testes existentes |
+| RAD-121 | Testes E2E - API | `[X]` CONCLUIDO | 2025-12-22 | 2025-12-22 | 19 testes, 77% coverage |
 
-### Pendencias Fase 5 (CRITICAS)
+### Pendencias Fase 5
 
 - [x] RAD-117: Criar testes para CodigoIBGE e TipoInterrupcao (58 testes, 100% coverage)
 - [x] RAD-118: Criar testes para Entity Interrupcao (26 testes, 100% coverage)
 - [x] RAD-119: Criar testes para GetInterrupcoesAtivasUseCase (17 testes, 98% coverage)
 - [x] RAD-120: Criar testes de integracao para repository (19 testes, 100% coverage)
-- [ ] RAD-121: Criar testes E2E para endpoints
+- [x] RAD-121: Criar testes E2E para endpoints (19 testes, 77% coverage)
 
-**ALERTA:** Cobertura Domain = 100%, Application = 98%, Infrastructure = 100%, E2E = 0%, Meta Total = 80%
+**STATUS:** Fase de testes completa - 139 testes total, meta de coverage atingida
 
 ---
 
@@ -239,8 +239,8 @@ TOTAL:                  [████████░░] 21/26 (81%)
 | 3 | ~~RAD-117~~ | ~~Testes Unit Value Objects~~ | ~~Coverage 0% -> meta 80%~~ FEITO |
 | 4 | ~~RAD-118~~ | ~~Testes Unit Entity~~ | ~~Coverage 0% -> meta 80%~~ FEITO |
 | 5 | ~~RAD-119~~ | ~~Testes Unit Use Case~~ | ~~Coverage 0% -> meta 80%~~ FEITO |
-| 6 | RAD-120 | Testes Integration Repository | Validacao Oracle |
-| 7 | RAD-121 | Testes E2E API | Validacao endpoints |
+| 6 | ~~RAD-120~~ | ~~Testes Integration Repository~~ | ~~Validacao Oracle~~ FEITO |
+| 7 | ~~RAD-121~~ | ~~Testes E2E API~~ | ~~Validacao endpoints~~ FEITO |
 
 ### ALTO (Core do Sistema)
 
@@ -299,6 +299,9 @@ TOTAL:                  [████████░░] 21/26 (81%)
 | 2025-12-22 | RAD-118 | Testes criados | 26 testes para Entity Interrupcao, 100% coverage |
 | 2025-12-22 | RAD-119 | Testes criados | 17 testes para Use Case GetInterrupcoesAtivas, 98% coverage |
 | 2025-12-22 | RAD-120 | Testes criados | 19 testes de integracao para InterrupcaoRepository, 100% coverage |
+| 2025-12-22 | RAD-121 | Testes E2E criados | 19 testes E2E para API Interrupcoes, 77% coverage |
+| 2025-12-22 | - | Config atualizado | Settings com env_prefix="RADAR_" |
+| 2025-12-22 | - | .env.example atualizado | Variaveis com prefixo RADAR_ |
 
 ---
 
@@ -368,9 +371,9 @@ pytest backend/tests/ --cov=backend --cov-report=html --cov-fail-under=80
 | Domain (Entity) | 100% | 90% | OK |
 | Domain (Services) | 100% | 90% | OK |
 | Application (Use Case) | 98% | 85% | OK |
-| Infrastructure | 0% | 70% | CRITICO |
-| Interfaces | 0% | 75% | CRITICO |
-| **TOTAL** | **~45%** | **80%** | **EM PROGRESSO** |
+| Infrastructure | 100% | 70% | OK |
+| Interfaces (E2E) | 77% | 75% | OK |
+| **TOTAL** | **~95%** | **80%** | **OK** |
 
 ### Conformidade ANEEL
 
