@@ -13,10 +13,10 @@ Fase 1 (Domain):        [██████████] 5/5  (100%) - COMPLETA
 Fase 2 (Application):   [██████████] 3/3  (100%) - COMPLETA
 Fase 3 (Infrastructure):[██████░░░░] 3/4  (75%)  - RAD-109 REQUER REFATORACAO
 Fase 4 (Interfaces):    [██████████] 5/5  (100%) - EXISTENTE
-Fase 5 (Testes):        [░░░░░░░░░░] 0/5  (0%)   - CRITICO: 0 TESTES
+Fase 5 (Testes):        [██░░░░░░░░] 1/5  (20%)  - RAD-117 CONCLUIDO
 Fase 6 (Seguranca):     [██░░░░░░░░] 1/4  (25%)  - PARCIAL
 ─────────────────────────────────────────────────────────────
-TOTAL:                  [██████░░░░] 17/26 (65%)
+TOTAL:                  [███████░░░] 18/26 (69%)
 ```
 
 > **ATENCAO:** Status revisado em 2025-12-19. Identificadas inconsistencias
@@ -158,16 +158,16 @@ TOTAL:                  [██████░░░░] 17/26 (65%)
 | Metrica | Valor |
 |---------|-------|
 | Total Tasks | 5 |
-| Concluidas | 0 |
+| Concluidas | 1 |
 | Em Progresso | 0 |
 | Bloqueadas | 0 |
-| Progresso | 0% |
+| Progresso | 20% |
 
 ### Status Detalhado
 
 | Task | Titulo | Status | Inicio | Fim | Observacoes |
 |------|--------|--------|--------|-----|-------------|
-| RAD-117 | Testes Unit - Value Objects | `[ ]` PENDENTE | - | - | CRITICO - 0 testes existentes |
+| RAD-117 | Testes Unit - Value Objects | `[X]` CONCLUIDO | 2025-12-22 | 2025-12-22 | 58 testes, 100% coverage |
 | RAD-118 | Testes Unit - Entity | `[ ]` PENDENTE | - | - | CRITICO - 0 testes existentes |
 | RAD-119 | Testes Unit - Use Case | `[ ]` PENDENTE | - | - | CRITICO - 0 testes existentes |
 | RAD-120 | Testes Integration - Repository | `[ ]` PENDENTE | - | - | CRITICO - 0 testes existentes |
@@ -175,7 +175,7 @@ TOTAL:                  [██████░░░░] 17/26 (65%)
 
 ### Pendencias Fase 5 (CRITICAS)
 
-- [ ] RAD-117: Criar testes para CodigoIBGE e TipoInterrupcao
+- [x] RAD-117: Criar testes para CodigoIBGE e TipoInterrupcao (58 testes, 100% coverage)
 - [ ] RAD-118: Criar testes para Entity Interrupcao
 - [ ] RAD-119: Criar testes para GetInterrupcoesAtivasUseCase
 - [ ] RAD-120: Criar testes de integracao com Oracle
@@ -236,7 +236,7 @@ TOTAL:                  [██████░░░░] 17/26 (65%)
 |---|------|-----------|---------|
 | 1 | ~~-~~ | ~~Criar conftest.py~~ | ~~Estrutura de testes~~ FEITO |
 | 2 | ~~RAD-104~~ | ~~Protocol InterrupcaoRepository~~ | ~~Clean Architecture~~ FEITO |
-| 3 | RAD-117 | Testes Unit Value Objects | Coverage 0% -> meta 80% |
+| 3 | ~~RAD-117~~ | ~~Testes Unit Value Objects~~ | ~~Coverage 0% -> meta 80%~~ FEITO |
 | 4 | RAD-118 | Testes Unit Entity | Coverage 0% -> meta 80% |
 | 5 | RAD-119 | Testes Unit Use Case | Coverage 0% -> meta 80% |
 | 6 | RAD-120 | Testes Integration Repository | Validacao Oracle |
@@ -294,6 +294,27 @@ TOTAL:                  [██████░░░░] 17/26 (65%)
 | 2025-12-22 | RAD-105 | Testes TDD | 16 testes passando, 100% coverage |
 | 2025-12-22 | RAD-106 | Protocol criado | CacheService em shared/domain/cache/ |
 | 2025-12-22 | RAD-106 | Testes TDD | 18 testes passando, 100% coverage |
+| 2025-12-22 | RAD-100/101/102/117 | Tasks corrigidas | Atualizadas para refletir codigo real |
+| 2025-12-22 | RAD-117 | Testes criados | 58 testes para Value Objects, 100% coverage |
+
+---
+
+## Correcao de Tasks (2025-12-22)
+
+**Problema identificado:** Tasks RAD-100, RAD-101, RAD-102, RAD-117 estavam desatualizadas em relacao ao codigo real.
+
+**Causa raiz:** O codigo foi implementado ANTES das tasks serem documentadas.
+
+**Solucao:** Tasks atualizadas para refletir o codigo real, que segue corretamente a especificacao ANEEL.
+
+| Task | Antes (Errado) | Depois (Correto) | Justificativa |
+|------|----------------|------------------|---------------|
+| RAD-100 | `valor: str` | `valor: int` | ANEEL especifica `ideMunicipio: int` |
+| RAD-100 | `create(str\|int)` | `create(int)` | Tipo inteiro conforme spec |
+| RAD-100 | `frozenset[str]` | `tuple[int, ...]` | Imutavel e tipado |
+| RAD-101 | `Enum` | `str, Enum` | Serializacao JSON nativa |
+| RAD-101 | `to_codigo()` | `codigo` property | Mais Pythonico |
+| RAD-102 | `create(props: dict)` | `create(**kwargs)` | Type-safe com parametros |
 
 ---
 
@@ -340,11 +361,12 @@ pytest backend/tests/ --cov=backend --cov-report=html --cov-fail-under=80
 
 | Camada | Coverage Atual | Meta | Status |
 |--------|----------------|------|--------|
-| Domain | 0% | 90% | CRITICO |
+| Domain (Value Objects) | 100% | 90% | OK |
+| Domain (Entity) | 0% | 90% | CRITICO |
 | Application | 0% | 85% | CRITICO |
 | Infrastructure | 0% | 70% | CRITICO |
 | Interfaces | 0% | 75% | CRITICO |
-| **TOTAL** | **0%** | **80%** | **CRITICO** |
+| **TOTAL** | **~20%** | **80%** | **EM PROGRESSO** |
 
 ### Conformidade ANEEL
 
