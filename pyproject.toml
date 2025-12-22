@@ -157,6 +157,8 @@ exclude_lines = [
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
     "if __name__ == .__main__.:",
+    "@abstractmethod",
+    "\\.\\.\\.",  # Ellipsis em Protocols
 ]
 fail_under = 80
 show_missing = true
