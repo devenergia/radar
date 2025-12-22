@@ -23,7 +23,7 @@ flowchart TB
     end
 
     subgraph Oracle["Banco de Dados Oracle"]
-        subgraph OracleRADAR["Oracle RADAR :1521"]
+        subgraph OracleRADAR["Oracle RADAR<br/>cn-dbrcomp:1568/AJUBVPD"]
             RADAR_DB[(RADAR Schema)]
         end
         subgraph OracleINSERVICE["Oracle INSERVICE"]
@@ -36,7 +36,7 @@ flowchart TB
 
     ANEEL -->|HTTPS :443| FW
     FW --> API
-    API -->|:1521| OracleRADAR
+    API -->|:1568| OracleRADAR
     RADAR_DB -.->|DBLINK_INSERVICE| INSERVICE
     RADAR_DB -.->|DBLINK_INDICADORES| INDICADORES
 
@@ -50,7 +50,7 @@ flowchart TB
 | Servico | Host | Porta | Protocolo | Descricao |
 |---------|------|-------|-----------|-----------|
 | **RADAR API** | 10.2.1.208 | 8000 | HTTP/HTTPS | FastAPI Application |
-| **Oracle RADAR** | 10.2.1.208 | 1521 | Oracle Net | Banco principal |
+| **Oracle RADAR** | cn-dbrcomp | 1568 | Oracle Net | Banco principal (AJUBVPD) |
 | **DBLINK_INSERVICE** | - | 1521 | Oracle Net | Link para sistema OMS |
 | **DBLINK_INDICADORES** | - | 1521 | Oracle Net | Link para universos |
 | **Memory Cache** | localhost | - | In-Memory | Cache de 5 minutos |
@@ -99,7 +99,7 @@ flowchart TB
     end
 
     subgraph Database["Banco de Dados"]
-        ORACLE[(Oracle :1521)]
+        ORACLE[(Oracle<br/>cn-dbrcomp:1568)]
     end
 
     REQ --> RATE
@@ -230,7 +230,7 @@ RADAR_ENVIRONMENT=production
 # Banco de Dados Oracle
 RADAR_DB_USER=radar_app
 RADAR_DB_PASSWORD=***
-RADAR_DB_CONNECTION_STRING=10.2.1.208:1521/RADAR
+RADAR_DB_CONNECTION_STRING=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=cn-dbrcomp)(PORT=1568))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=AJUBVPD)))
 RADAR_DB_POOL_MIN=2
 RADAR_DB_POOL_MAX=10
 
