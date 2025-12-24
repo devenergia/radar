@@ -16,12 +16,12 @@ class AneelStatusRequisicao(IntEnum):
 
 
 class AneelBaseResponse(BaseModel):
-    """Resposta base padrao ANEEL."""
+    """Resposta base padrao ANEEL V4."""
 
     idcStatusRequisicao: AneelStatusRequisicao
-    desStatusRequisicao: str
     emailIndisponibilidade: str
     mensagem: str = ""
+    interrupcaoFornecimento: list[Any] = []
 
 
 class AneelResponseBuilder:
@@ -53,7 +53,6 @@ class AneelResponseBuilder:
         """
         return {
             "idcStatusRequisicao": AneelStatusRequisicao.SUCESSO,
-            "desStatusRequisicao": "Sucesso",
             "emailIndisponibilidade": email or cls.DEFAULT_EMAIL,
             "mensagem": message,
             **data,
@@ -79,9 +78,9 @@ class AneelResponseBuilder:
         """
         response = {
             "idcStatusRequisicao": AneelStatusRequisicao.ERRO,
-            "desStatusRequisicao": "Erro",
             "emailIndisponibilidade": email or cls.DEFAULT_EMAIL,
             "mensagem": message,
+            "interrupcaoFornecimento": [],
         }
         if additional_data:
             response.update(additional_data)

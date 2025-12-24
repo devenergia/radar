@@ -1,135 +1,123 @@
 openapi: 3.1.0
 info:
-  title: API RADAR - Quantitativo de Interrupções Ativas
+  title: API RADAR - Quantitativo de Interrupcoes Ativas
   description: |
-    API para fornecimento de dados em tempo real das interrupções de fornecimento
-    de energia elétrica ativas no sistema da Roraima Energia, conforme especificação
-    da ANEEL (Ofício Circular nº 14/2025-SFE/ANEEL).
+    API para fornecimento de dados em tempo real das interrupcoes de fornecimento
+    de energia eletrica ativas no sistema da Roraima Energia, conforme especificacao
+    da ANEEL (Oficio Circular 14/2025-SFE/ANEEL).
 
-    ## Visão Geral
+    ## Visao Geral
 
-    Esta API fornece à ANEEL dados agregados por município e tipo de interrupção,
-    permitindo monitoramento em tempo real das ocorrências no sistema elétrico de Roraima.
+    Esta API fornece a ANEEL dados agregados por municipio e conjunto eletrico,
+    permitindo monitoramento em tempo real das ocorrencias no sistema eletrico de Roraima.
 
-    ## Autenticação
+    ## Formato de Resposta ANEEL V4
 
-    Todas as requisições devem incluir o header `x-api-key` com a chave de autenticação
+    Conforme Oficio Circular 14/2025-SFE/ANEEL, a resposta segue o formato padrao:
+    - `idcStatusRequisicao`: 1 (sucesso) ou 2 (erro)
+    - `emailIndisponibilidade`: Email para contato em caso de problemas
+    - `mensagem`: Mensagem de erro (vazio se sucesso)
+    - `interrupcaoFornecimento`: Lista de interrupcoes agregadas
+
+    ## Autenticacao
+
+    Todas as requisicoes devem incluir o header `x-api-key` com a chave de autenticacao
     fornecida pela Roraima Energia.
 
     ## Rate Limiting
 
-    - Frequência máxima: 12 requisições/minuto
+    - Frequencia maxima: 10 requisicoes/minuto
     - Intervalo recomendado: 5 minutos entre consultas
 
     ## Contato
 
-    Em caso de indisponibilidade ou problemas, entrar em contato através do email
+    Em caso de indisponibilidade ou problemas, entrar em contato atraves do email
     informado no campo `emailIndisponibilidade` da resposta.
   version: 1.0.0
   contact:
     name: Equipe RADAR - Roraima Energia
     email: radar@roraimaenergia.com.br
   license:
-    name: Proprietário
+    name: Proprietario
     url: https://roraimaenergia.com.br
 
 servers:
   - url: https://api.roraimaenergia.com.br/radar/v1
-    description: Servidor de Produção
+    description: Servidor de Producao
   - url: https://api-homolog.roraimaenergia.com.br/radar/v1
-    description: Servidor de Homologação
+    description: Servidor de Homologacao
   - url: http://localhost:8001
     description: Servidor de Desenvolvimento
 
 tags:
-  - name: Interrupções
-    description: Endpoints relacionados a interrupções de fornecimento
+  - name: Interrupcoes
+    description: Endpoints relacionados a interrupcoes de fornecimento
+  - name: Sistema
+    description: Endpoints de sistema (health check, info)
 
 paths:
   /quantitativointerrupcoesativas:
     get:
       operationId: getQuantitativoInterrupcoesAtivas
-      summary: Quantitativo de Interrupções Ativas
+      summary: Quantitativo de Interrupcoes Ativas
       description: |
-        Retorna o quantitativo de interrupções de fornecimento de energia elétrica
-        ativas, agregadas por município e tipo de interrupção (programada/não programada).
+        Retorna o quantitativo de interrupcoes de fornecimento de energia eletrica
+        ativas, agregadas por municipio e conjunto eletrico.
 
-        ## Regras de Agregação
+        ## Formato de Resposta ANEEL V4
 
-        Os dados são agregados por:
-        - Código IBGE do município (7 dígitos)
-        - Tipo de interrupção (1=Programada, 2=Não Programada)
+        Conforme Oficio Circular 14/2025-SFE/ANEEL, os dados sao retornados no campo
+        `interrupcaoFornecimento` com os seguintes campos por item:
+        - `ideConjuntoUnidadeConsumidora`: Identificador do conjunto eletrico
+        - `ideMunicipio`: Codigo IBGE do municipio (7 digitos)
+        - `qtdUCsAtendidas`: Quantidade de UCs atendidas no conjunto
+        - `qtdOcorrenciaProgramada`: Quantidade de UCs afetadas por interrupcoes programadas
+        - `qtdOcorrenciaNaoProgramada`: Quantidade de UCs afetadas por interrupcoes nao programadas
 
         ## Cache
 
-        Os dados são atualizados a cada 5 minutos. Requisições dentro deste intervalo
+        Os dados sao atualizados a cada 5 minutos. Requisicoes dentro deste intervalo
         podem retornar dados do cache.
-
-        ## Dados Históricos
-
-        Para recuperar dados de um momento específico no passado, utilize o parâmetro
-        `dthRecuperacao`. Esta funcionalidade estará disponível a partir de Abril/2026.
       tags:
-        - Interrupções
+        - Interrupcoes
       security:
         - ApiKeyAuth: []
-      parameters:
-        - name: dthRecuperacao
-          in: query
-          required: false
-          description: |
-            Data/hora para recuperação de dados históricos.
-            Formato: dd/mm/yyyy hh:mm
-
-            **Nota:** Funcionalidade disponível a partir de Abril/2026.
-          schema:
-            type: string
-            pattern: '^\d{2}/\d{2}/\d{4} \d{2}:\d{2}$'
-            example: "10/12/2025 14:30"
       responses:
         '200':
-          description: Requisição processada com sucesso
+          description: Requisicao processada com sucesso
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuantitativoInterrupcoesResponse'
+                $ref: '#/components/schemas/InterrupcoesAtivasResponse'
               examples:
                 comInterrupcoes:
-                  summary: Com interrupções ativas
-                  description: Exemplo com 3 interrupções ativas em diferentes municípios
+                  summary: Com interrupcoes ativas
+                  description: Exemplo com interrupcoes ativas em diferentes municipios
                   value:
                     idcStatusRequisicao: 1
                     emailIndisponibilidade: "radar@roraimaenergia.com.br"
                     mensagem: ""
-                    quantitativoInterrupcoesAtivas:
-                      - ideMunicipio: 1400050
-                        idcTipoInterrupcao: 2
-                        qtdInterrupcoes: 2
-                        qtdUcsInterrompidas: 3500
-                        qtdEquipesDeslocamento: 4
-                        dthUltRecuperacao: "10/12/2025 14:35"
-                      - ideMunicipio: 1400050
-                        idcTipoInterrupcao: 1
-                        qtdInterrupcoes: 1
-                        qtdUcsInterrompidas: 200
-                        qtdEquipesDeslocamento: 1
-                        dthUltRecuperacao: "10/12/2025 14:30"
-                      - ideMunicipio: 1400175
-                        idcTipoInterrupcao: 2
-                        qtdInterrupcoes: 1
-                        qtdUcsInterrompidas: 450
-                        qtdEquipesDeslocamento: 1
-                        dthUltRecuperacao: "10/12/2025 14:32"
+                    interrupcaoFornecimento:
+                      - ideConjuntoUnidadeConsumidora: 1
+                        ideMunicipio: 1400100
+                        qtdUCsAtendidas: 125000
+                        qtdOcorrenciaProgramada: 150
+                        qtdOcorrenciaNaoProgramada: 45
+                      - ideConjuntoUnidadeConsumidora: 2
+                        ideMunicipio: 1400175
+                        qtdUCsAtendidas: 8500
+                        qtdOcorrenciaProgramada: 0
+                        qtdOcorrenciaNaoProgramada: 120
                 semInterrupcoes:
-                  summary: Sem interrupções ativas
-                  description: Exemplo quando não há interrupções no sistema
+                  summary: Sem interrupcoes ativas
+                  description: Exemplo quando nao ha interrupcoes no sistema
                   value:
                     idcStatusRequisicao: 1
                     emailIndisponibilidade: "radar@roraimaenergia.com.br"
                     mensagem: ""
-                    quantitativoInterrupcoesAtivas: []
+                    interrupcaoFornecimento: []
         '401':
-          description: Não autorizado - API Key ausente ou inválida
+          description: Nao autorizado - API Key ausente ou invalida
           content:
             application/json:
               schema:
@@ -137,8 +125,8 @@ paths:
               example:
                 idcStatusRequisicao: 2
                 emailIndisponibilidade: "radar@roraimaenergia.com.br"
-                mensagem: "API Key inválida ou ausente"
-                quantitativoInterrupcoesAtivas: []
+                mensagem: "Header x-api-key e obrigatorio"
+                interrupcaoFornecimento: []
         '429':
           description: Too Many Requests - Rate limit excedido
           content:
@@ -148,8 +136,24 @@ paths:
               example:
                 idcStatusRequisicao: 2
                 emailIndisponibilidade: "radar@roraimaenergia.com.br"
-                mensagem: "Limite de requisições excedido. Aguarde 60 segundos."
-                quantitativoInterrupcoesAtivas: []
+                mensagem: "Rate limit excedido. Limite: 10 requisicoes por minuto."
+                interrupcaoFornecimento: []
+          headers:
+            Retry-After:
+              description: Segundos ate poder fazer nova requisicao
+              schema:
+                type: integer
+                example: 45
+            X-RateLimit-Limit:
+              description: Limite de requisicoes por minuto
+              schema:
+                type: integer
+                example: 10
+            X-RateLimit-Remaining:
+              description: Requisicoes restantes na janela atual
+              schema:
+                type: integer
+                example: 0
         '500':
           description: Erro interno do servidor
           content:
@@ -159,30 +163,19 @@ paths:
               example:
                 idcStatusRequisicao: 2
                 emailIndisponibilidade: "radar@roraimaenergia.com.br"
-                mensagem: "Erro de conexão com banco de dados do Sistema Técnico"
-                quantitativoInterrupcoesAtivas: []
-        '503':
-          description: Serviço indisponível - Manutenção
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              example:
-                idcStatusRequisicao: 2
-                emailIndisponibilidade: "radar@roraimaenergia.com.br"
-                mensagem: "Sistema em manutenção programada. Previsão de retorno: 10/12/2025 18:00"
-                quantitativoInterrupcoesAtivas: []
+                mensagem: "Erro interno do servidor. Tente novamente mais tarde."
+                interrupcaoFornecimento: []
 
   /health:
     get:
       operationId: healthCheck
       summary: Health Check
-      description: Verifica o status de saúde da API e suas dependências.
+      description: Verifica o status de saude da API e suas dependencias.
       tags:
-        - Interrupções
+        - Sistema
       responses:
         '200':
-          description: API saudável
+          description: API saudavel
           content:
             application/json:
               schema:
@@ -190,23 +183,33 @@ paths:
               example:
                 status: "healthy"
                 version: "1.0.0"
-                timestamp: "2025-12-10T14:30:00Z"
-                dependencies:
-                  database: "healthy"
-                  cache: "healthy"
-        '503':
-          description: API com problemas
+                checks:
+                  database:
+                    healthy: true
+                    latency_ms: 15
+                  cache:
+                    status: "up"
+                    item_count: 5
+                    hit_rate: 0.85
+
+  /:
+    get:
+      operationId: root
+      summary: Informacoes da API
+      description: Retorna informacoes basicas da API.
+      tags:
+        - Sistema
+      responses:
+        '200':
+          description: Informacoes da API
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
+                $ref: '#/components/schemas/RootResponse'
               example:
-                status: "unhealthy"
+                api: "RADAR - Interrupcoes Ativas"
                 version: "1.0.0"
-                timestamp: "2025-12-10T14:30:00Z"
-                dependencies:
-                  database: "unhealthy"
-                  cache: "healthy"
+                docs: "/docs"
 
 components:
   securitySchemes:
@@ -215,24 +218,25 @@ components:
       in: header
       name: x-api-key
       description: |
-        Chave de autenticação fornecida pela Roraima Energia.
+        Chave de autenticacao fornecida pela Roraima Energia.
 
         Para obter uma chave, entre em contato com radar@roraimaenergia.com.br
 
   schemas:
-    QuantitativoInterrupcoesResponse:
+    InterrupcoesAtivasResponse:
       type: object
+      description: Resposta do endpoint de interrupcoes ativas - Formato ANEEL V4
       required:
         - idcStatusRequisicao
         - emailIndisponibilidade
         - mensagem
-        - quantitativoInterrupcoesAtivas
+        - interrupcaoFornecimento
       properties:
         idcStatusRequisicao:
           type: integer
           enum: [1, 2]
           description: |
-            Status da requisição:
+            Status da requisicao:
             - 1: Sucesso
             - 2: Erro
           example: 1
@@ -245,87 +249,79 @@ components:
           type: string
           description: Mensagem de erro (vazio se sucesso)
           example: ""
-        quantitativoInterrupcoesAtivas:
+        interrupcaoFornecimento:
           type: array
-          description: Lista de interrupções agregadas por município e tipo
+          description: Lista de interrupcoes agregadas por municipio e conjunto eletrico
           items:
-            $ref: '#/components/schemas/InterrupcaoAtiva'
+            $ref: '#/components/schemas/InterrupcaoAgregadaItem'
 
-    InterrupcaoAtiva:
+    InterrupcaoAgregadaItem:
       type: object
+      description: Item de interrupcao agregada no formato ANEEL V4
       required:
+        - ideConjuntoUnidadeConsumidora
         - ideMunicipio
-        - idcTipoInterrupcao
-        - qtdInterrupcoes
-        - qtdUcsInterrompidas
-        - qtdEquipesDeslocamento
-        - dthUltRecuperacao
+        - qtdUCsAtendidas
+        - qtdOcorrenciaProgramada
+        - qtdOcorrenciaNaoProgramada
       properties:
+        ideConjuntoUnidadeConsumidora:
+          type: integer
+          description: Identificador do conjunto eletrico
+          example: 1
         ideMunicipio:
           type: integer
           description: |
-            Código IBGE do município (7 dígitos).
+            Codigo IBGE do municipio (7 digitos).
 
-            Municípios de Roraima:
-            - 1400050: Boa Vista
-            - 1400100: Alto Alegre
+            Municipios de Roraima:
+            - 1400050: Alto Alegre
             - 1400027: Amajari
+            - 1400100: Boa Vista
             - 1400159: Bonfim
-            - 1400175: Cantá
-            - 1400209: Caracaraí
+            - 1400175: Canta
+            - 1400209: Caracarai
             - 1400233: Caroebe
             - 1400282: Iracema
-            - 1400308: Mucajaí
+            - 1400308: Mucajai
             - 1400407: Normandia
             - 1400456: Pacaraima
-            - 1400472: Rorainópolis
-            - 1400506: São João da Baliza
-            - 1400605: São Luiz
-            - 1400704: Uiramutã
-          example: 1400050
+            - 1400472: Rorainopolis
+            - 1400506: Sao Joao da Baliza
+            - 1400605: Sao Luiz
+            - 1400704: Uiramuta
+          example: 1400100
           minimum: 1400000
           maximum: 1499999
-        idcTipoInterrupcao:
-          type: integer
-          enum: [1, 2]
-          description: |
-            Tipo de interrupção:
-            - 1: Programada (manutenção preventiva, obras)
-            - 2: Não Programada (falhas, acidentes, eventos climáticos)
-          example: 2
-        qtdInterrupcoes:
+        qtdUCsAtendidas:
           type: integer
           minimum: 0
-          description: Quantidade de interrupções/eventos distintos
-          example: 2
-        qtdUcsInterrompidas:
+          description: Quantidade de Unidades Consumidoras (UCs) atendidas no conjunto
+          example: 125000
+        qtdOcorrenciaProgramada:
           type: integer
           minimum: 0
-          description: Quantidade de Unidades Consumidoras (UCs) afetadas
-          example: 3500
-        qtdEquipesDeslocamento:
+          description: Quantidade de UCs afetadas por interrupcoes programadas
+          example: 150
+        qtdOcorrenciaNaoProgramada:
           type: integer
           minimum: 0
-          description: Quantidade de equipes em deslocamento ou em campo
-          example: 4
-        dthUltRecuperacao:
-          type: string
-          pattern: '^\d{2}/\d{2}/\d{4} \d{2}:\d{2}$'
-          description: Data/hora da última atualização dos dados (formato dd/mm/yyyy hh:mm)
-          example: "10/12/2025 14:35"
+          description: Quantidade de UCs afetadas por interrupcoes nao programadas
+          example: 45
 
     ErrorResponse:
       type: object
+      description: Resposta de erro padrao ANEEL V4
       required:
         - idcStatusRequisicao
         - emailIndisponibilidade
         - mensagem
-        - quantitativoInterrupcoesAtivas
+        - interrupcaoFornecimento
       properties:
         idcStatusRequisicao:
           type: integer
           const: 2
-          description: Status de erro
+          description: Status de erro (sempre 2)
           example: 2
         emailIndisponibilidade:
           type: string
@@ -334,21 +330,22 @@ components:
           example: "radar@roraimaenergia.com.br"
         mensagem:
           type: string
-          description: Descrição do erro ocorrido
-          example: "Erro de conexão com banco de dados do Sistema Técnico"
-        quantitativoInterrupcoesAtivas:
+          description: Descricao do erro ocorrido
+          example: "Erro de conexao com banco de dados"
+        interrupcaoFornecimento:
           type: array
           description: Array vazio em caso de erro
           items:
-            $ref: '#/components/schemas/InterrupcaoAtiva'
+            $ref: '#/components/schemas/InterrupcaoAgregadaItem'
           maxItems: 0
 
     HealthResponse:
       type: object
+      description: Resposta do endpoint de health check
       required:
         - status
         - version
-        - timestamp
+        - checks
       properties:
         status:
           type: string
@@ -357,25 +354,51 @@ components:
           example: "healthy"
         version:
           type: string
-          description: Versão da API
+          description: Versao da API
           example: "1.0.0"
-        timestamp:
-          type: string
-          format: date-time
-          description: Timestamp da verificação
-          example: "2025-12-10T14:30:00Z"
-        dependencies:
+        checks:
           type: object
-          description: Status das dependências
+          description: Status das dependencias
           properties:
             database:
-              type: string
-              enum: [healthy, unhealthy]
-              example: "healthy"
+              type: object
+              properties:
+                healthy:
+                  type: boolean
+                  example: true
+                latency_ms:
+                  type: number
+                  example: 15
             cache:
-              type: string
-              enum: [healthy, unhealthy]
-              example: "healthy"
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: "up"
+                item_count:
+                  type: integer
+                  example: 5
+                hit_rate:
+                  type: number
+                  example: 0.85
+
+    RootResponse:
+      type: object
+      description: Informacoes basicas da API
+      properties:
+        api:
+          type: string
+          description: Nome da API
+          example: "RADAR - Interrupcoes Ativas"
+        version:
+          type: string
+          description: Versao da API
+          example: "1.0.0"
+        docs:
+          type: string
+          nullable: true
+          description: URL da documentacao (null em producao)
+          example: "/docs"
 
 security:
   - ApiKeyAuth: []
