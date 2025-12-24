@@ -2,7 +2,7 @@
 
 **Projeto:** RADAR - API Quantitativo de Interrupcoes Ativas
 **Inicio:** 2025-12-19
-**Ultima Atualizacao:** 2025-12-24 (RAD-124 concluido)
+**Ultima Atualizacao:** 2025-12-24 (RAD-131 concluido)
 
 ---
 
@@ -14,9 +14,9 @@ Fase 2 (Application):   [██████████] 3/3  (100%) - COMPLETA
 Fase 3 (Infrastructure):[██████████] 4/4  (100%) - COMPLETA
 Fase 4 (Interfaces):    [██████████] 5/5  (100%) - EXISTENTE
 Fase 5 (Testes):        [██████████] 5/5  (100%) - COMPLETA
-Fase 6 (Seguranca):     [██████░░░░] 3/5  (60%)  - EM PROGRESSO
+Fase 6 (Seguranca):     [███████░░░] 4/6  (67%)  - EM PROGRESSO
 ─────────────────────────────────────────────────────────────
-TOTAL:                  [████████░░] 25/27 (93%)
+TOTAL:                  [████████░░] 26/28 (93%)
 ```
 
 > **ATENCAO:** Status revisado em 2025-12-19. Identificadas inconsistencias
@@ -191,11 +191,11 @@ TOTAL:                  [████████░░] 25/27 (93%)
 
 | Metrica | Valor |
 |---------|-------|
-| Total Tasks | 5 |
-| Concluidas | 3 |
+| Total Tasks | 6 |
+| Concluidas | 4 |
 | Em Progresso | 0 |
 | Bloqueadas | 1 |
-| Progresso | 60% |
+| Progresso | 67% |
 
 ### Status Detalhado
 
@@ -206,11 +206,13 @@ TOTAL:                  [████████░░] 25/27 (93%)
 | RAD-124 | Logging e Auditoria | `[X]` CONCLUIDO | 2025-12-24 | 2025-12-24 | AuditLogger + AuditMiddleware - 33 testes, 100% coverage |
 | RAD-125 | Validacao Final ANEEL | `[!]` BLOQUEADO | - | - | Bloqueado por RAD-130 |
 | RAD-130 | IP Whitelist ANEEL | `[ ]` PENDENTE | - | - | Implementar validacao de IP |
+| RAD-131 | Jobs Agendados | `[X]` CONCLUIDO | 2025-12-24 | 2025-12-24 | SchedulerService + InterrupcaoCacheWarmupJob - 28 testes, 92% coverage |
 
 ### Pendencias Fase 6
 
 - [x] RAD-123: Implementar rate limiting (10 req/min)
 - [x] RAD-124: Implementar logging e auditoria estruturada
+- [x] RAD-131: Implementar jobs agendados (APScheduler)
 - [ ] RAD-130: Implementar IP whitelist ANEEL (200.198.220.128/25)
 - [ ] RAD-125: Executar validacao de conformidade ANEEL
 
@@ -307,6 +309,7 @@ TOTAL:                  [████████░░] 25/27 (93%)
 | 2025-12-22 | RAD-123 | Rate Limiting implementado | RateLimitMiddleware (10 req/min), 9 testes, 88% coverage |
 | 2025-12-22 | RAD-109 | OracleInterrupcaoRepository sync | Novo repository com Session sync, Protocol atualizado, 27 testes, 97% coverage |
 | 2025-12-24 | RAD-124 | Logging e Auditoria | AuditLogger + AuditMiddleware, 33 testes, 100% coverage |
+| 2025-12-24 | RAD-131 | Jobs Agendados | SchedulerService + InterrupcaoCacheWarmupJob, 28 testes, 92% coverage |
 
 ---
 

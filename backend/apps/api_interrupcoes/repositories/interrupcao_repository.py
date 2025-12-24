@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from backend.shared.infrastructure.database.oracle_pool import OraclePool, oracle_pool
 from backend.shared.infrastructure.logger import get_logger
+
+if TYPE_CHECKING:
+    from backend.apps.api_interrupcoes.schemas import InterrupcaoAgregadaItem
 
 
 @dataclass
@@ -18,6 +21,18 @@ class InterrupcaoAgregadaDB:
     qtd_ucs_atendidas: int
     qtd_programada: int
     qtd_nao_programada: int
+
+    def to_aneel_format(self) -> InterrupcaoAgregadaItem:
+        """Converte para formato ANEEL."""
+        from backend.apps.api_interrupcoes.schemas import InterrupcaoAgregadaItem
+
+        return InterrupcaoAgregadaItem(
+            ideConjuntoUnidadeConsumidora=self.conjunto,
+            ideMunicipio=self.municipio_ibge,
+            qtdUCsAtendidas=self.qtd_ucs_atendidas,
+            qtdOcorrenciaProgramada=self.qtd_programada,
+            qtdOcorrenciaNaoProgramada=self.qtd_nao_programada,
+        )
 
 
 class InterrupcaoRepository:

@@ -2,38 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from backend.shared.domain.result import Result
-from backend.shared.infrastructure.cache.memory_cache import MemoryCache, memory_cache
-from backend.shared.infrastructure.logger import get_logger
-
 from backend.apps.api_interrupcoes.repositories.interrupcao_repository import (
     InterrupcaoRepository,
     interrupcao_repository,
 )
 from backend.apps.api_interrupcoes.schemas import InterrupcaoAgregadaItem
-
-
-@dataclass
-class InterrupcaoAgregada:
-    """Dados agregados de interrupcao por municipio e conjunto."""
-
-    conjunto: int
-    municipio_ibge: int
-    qtd_ucs_atendidas: int
-    qtd_programada: int
-    qtd_nao_programada: int
-
-    def to_aneel_format(self) -> InterrupcaoAgregadaItem:
-        """Converte para formato ANEEL."""
-        return InterrupcaoAgregadaItem(
-            ideConjuntoUnidadeConsumidora=self.conjunto,
-            ideMunicipio=self.municipio_ibge,
-            qtdUCsAtendidas=self.qtd_ucs_atendidas,
-            qtdOcorrenciaProgramada=self.qtd_programada,
-            qtdOcorrenciaNaoProgramada=self.qtd_nao_programada,
-        )
+from backend.shared.domain.result import Result
+from backend.shared.infrastructure.cache.memory_cache import MemoryCache, memory_cache
+from backend.shared.infrastructure.logger import get_logger
 
 
 class GetInterrupcoesAtivasUseCase:
@@ -58,18 +34,25 @@ class GetInterrupcoesAtivasUseCase:
         self.cache = cache
         self.logger = get_logger("use_case.interrupcoes")
 
-    async def execute(self) -> Result[list[InterrupcaoAgregadaItem]]:
+    async def execute(
+        self, *, force_refresh: bool = False
+    ) -> Result[list[InterrupcaoAgregadaItem]]:
         """
         Executa o caso de uso.
+
+        Args:
+            force_refresh: Se True, ignora cache e busca diretamente do banco.
+                          Usado pelo job de cache warmup.
 
         Returns:
             Result com lista de interrupcoes agregadas ou erro
         """
-        # Tentar obter do cache
-        cached = await self.cache.get(self.CACHE_KEY)
-        if cached is not None:
-            self.logger.debug("Cache hit para interrupcoes ativas")
-            return Result.ok(cached)
+        # Tentar obter do cache (se não for force_refresh)
+        if not force_refresh:
+            cached = await self.cache.get(self.CACHE_KEY)
+            if cached is not None:
+                self.logger.debug("Cache hit para interrupcoes ativas")
+                return Result.ok(cached)
 
         self.logger.debug("Cache miss - buscando do banco")
 
