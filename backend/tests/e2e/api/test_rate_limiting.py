@@ -53,12 +53,12 @@ class TestRateLimiting:
         assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
 
     @pytest.mark.asyncio
-    async def test_resposta_429_deve_ter_formato_aneel(
+    async def test_resposta_429_deve_ter_formato_aneel_v4(
         self,
         client: AsyncClient,
         api_key: str,
     ) -> None:
-        """Resposta 429 deve seguir formato ANEEL."""
+        """Resposta 429 deve seguir formato ANEEL V4."""
         # Excede limite
         for _ in range(11):
             response = await client.get(
@@ -66,11 +66,13 @@ class TestRateLimiting:
                 headers={"x-api-key": api_key},
             )
 
-        # Verifica formato ANEEL
+        # Verifica formato ANEEL V4 (Oficio Circular 14/2025-SFE/ANEEL)
         data = response.json()
         assert data["idcStatusRequisicao"] == 2
-        assert data["desStatusRequisicao"] == "Erro"
         assert "emailIndisponibilidade" in data
+        assert "mensagem" in data
+        assert "interrupcaoFornecimento" in data
+        assert data["interrupcaoFornecimento"] == []
         assert "rate limit" in data["mensagem"].lower()
 
     @pytest.mark.asyncio

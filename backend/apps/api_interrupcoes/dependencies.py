@@ -36,9 +36,9 @@ async def verify_api_key(
             status_code=401,
             detail={
                 "idcStatusRequisicao": 2,
-                "desStatusRequisicao": "Erro",
                 "emailIndisponibilidade": settings.email_indisponibilidade,
                 "mensagem": "Header x-api-key e obrigatorio",
+                "interrupcaoFornecimento": [],
             },
         )
 
@@ -52,9 +52,9 @@ async def verify_api_key(
             status_code=401,
             detail={
                 "idcStatusRequisicao": 2,
-                "desStatusRequisicao": "Erro",
                 "emailIndisponibilidade": settings.email_indisponibilidade,
                 "mensagem": "API Key invalida",
+                "interrupcaoFornecimento": [],
             },
         )
 
@@ -91,8 +91,8 @@ async def verify_ip_whitelist(request: Request) -> None:
             status_code=403,
             detail={
                 "idcStatusRequisicao": 2,
-                "desStatusRequisicao": "Erro",
                 "emailIndisponibilidade": settings.email_indisponibilidade,
                 "mensagem": "Acesso nao autorizado para este IP",
+                "interrupcaoFornecimento": [],
             },
         )

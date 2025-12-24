@@ -48,7 +48,7 @@ async def get_quantitativo_interrupcoes_ativas(
         return AneelResponseBuilder.error(result.error)
 
     return AneelResponseBuilder.success(
-        {"listaInterrupcoes": [item.model_dump() for item in result.value]}
+        {"interrupcaoFornecimento": [item.model_dump() for item in result.value]}
     )
 
 

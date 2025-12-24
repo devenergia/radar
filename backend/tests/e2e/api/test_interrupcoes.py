@@ -62,11 +62,11 @@ class TestQuantitativoInterrupcoesAtivas:
             assert response.status_code == status.HTTP_200_OK
 
         @pytest.mark.asyncio
-        async def test_erro_401_deve_ter_formato_aneel(
+        async def test_erro_401_deve_ter_formato_aneel_v4(
             self,
             client: AsyncClient,
         ) -> None:
-            """Erro 401 deve retornar formato ANEEL."""
+            """Erro 401 deve retornar formato ANEEL V4."""
             # Act
             response = await client.get("/quantitativointerrupcoesativas")
 
@@ -74,19 +74,20 @@ class TestQuantitativoInterrupcoesAtivas:
             data = response.json()
             detail = data.get("detail", data)
             assert detail["idcStatusRequisicao"] == 2
-            assert detail["desStatusRequisicao"] == "Erro"
             assert "emailIndisponibilidade" in detail
+            assert "interrupcaoFornecimento" in detail
+            assert detail["interrupcaoFornecimento"] == []
 
     class TestFormatoResposta:
         """Testes do formato de resposta ANEEL."""
 
         @pytest.mark.asyncio
-        async def test_deve_retornar_campos_obrigatorios_aneel(
+        async def test_deve_retornar_campos_obrigatorios_aneel_v4(
             self,
             client: AsyncClient,
             api_key: str,
         ) -> None:
-            """Resposta deve ter campos obrigatorios ANEEL."""
+            """Resposta deve ter campos obrigatorios ANEEL V4."""
             # Act
             response = await client.get(
                 "/quantitativointerrupcoesativas",
@@ -95,11 +96,11 @@ class TestQuantitativoInterrupcoesAtivas:
 
             # Assert
             data = response.json()
+            # Campos obrigatorios ANEEL V4 (Oficio Circular 14/2025-SFE/ANEEL)
             assert "idcStatusRequisicao" in data
-            assert "desStatusRequisicao" in data
             assert "emailIndisponibilidade" in data
             assert "mensagem" in data
-            assert "listaInterrupcoes" in data
+            assert "interrupcaoFornecimento" in data
 
         @pytest.mark.asyncio
         async def test_status_sucesso_deve_ser_1(
@@ -117,23 +118,6 @@ class TestQuantitativoInterrupcoesAtivas:
             # Assert
             data = response.json()
             assert data["idcStatusRequisicao"] == 1
-
-        @pytest.mark.asyncio
-        async def test_desStatusRequisicao_deve_ser_sucesso(
-            self,
-            client: AsyncClient,
-            api_key: str,
-        ) -> None:
-            """desStatusRequisicao deve ser 'Sucesso'."""
-            # Act
-            response = await client.get(
-                "/quantitativointerrupcoesativas",
-                headers={"x-api-key": api_key},
-            )
-
-            # Assert
-            data = response.json()
-            assert data["desStatusRequisicao"] == "Sucesso"
 
         @pytest.mark.asyncio
         async def test_email_deve_estar_configurado(
@@ -171,12 +155,12 @@ class TestQuantitativoInterrupcoesAtivas:
             assert data["mensagem"] == ""
 
         @pytest.mark.asyncio
-        async def test_listaInterrupcoes_deve_ser_lista(
+        async def test_interrupcaoFornecimento_deve_ser_lista(
             self,
             client: AsyncClient,
             api_key: str,
         ) -> None:
-            """listaInterrupcoes deve ser uma lista."""
+            """interrupcaoFornecimento deve ser uma lista (ANEEL V4)."""
             # Act
             response = await client.get(
                 "/quantitativointerrupcoesativas",
@@ -185,7 +169,7 @@ class TestQuantitativoInterrupcoesAtivas:
 
             # Assert
             data = response.json()
-            assert isinstance(data["listaInterrupcoes"], list)
+            assert isinstance(data["interrupcaoFornecimento"], list)
 
 
 @pytest.mark.e2e

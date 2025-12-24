@@ -26,21 +26,18 @@ class InterrupcaoAgregadaItem(BaseModel):
 
 
 class InterrupcoesAtivasResponse(BaseModel):
-    """Resposta do endpoint de interrupcoes ativas."""
+    """Resposta do endpoint de interrupcoes ativas - Formato ANEEL V4."""
 
     idcStatusRequisicao: int = Field(
         ..., description="1 = Sucesso, 2 = Erro"
-    )
-    desStatusRequisicao: str = Field(
-        ..., description="Descricao do status"
     )
     emailIndisponibilidade: str = Field(
         ..., description="Email para contato em caso de indisponibilidade"
     )
     mensagem: str = Field(
-        default="", description="Mensagem adicional"
+        default="", description="Mensagem de erro (vazio se sucesso)"
     )
-    listaInterrupcoes: list[InterrupcaoAgregadaItem] = Field(
+    interrupcaoFornecimento: list[InterrupcaoAgregadaItem] = Field(
         default_factory=list,
         description="Lista de interrupcoes agregadas por municipio/conjunto",
     )
@@ -49,10 +46,9 @@ class InterrupcoesAtivasResponse(BaseModel):
         "json_schema_extra": {
             "example": {
                 "idcStatusRequisicao": 1,
-                "desStatusRequisicao": "Sucesso",
                 "emailIndisponibilidade": "radar@roraimaenergia.com.br",
                 "mensagem": "",
-                "listaInterrupcoes": [
+                "interrupcaoFornecimento": [
                     {
                         "ideConjuntoUnidadeConsumidora": 1,
                         "ideMunicipio": 1400100,
@@ -75,9 +71,14 @@ class HealthResponse(BaseModel):
 
 
 class ErrorResponse(BaseModel):
-    """Resposta de erro padrao ANEEL."""
+    """Resposta de erro padrao ANEEL V4."""
 
     idcStatusRequisicao: int = Field(default=2, description="2 = Erro")
-    desStatusRequisicao: str = Field(default="Erro")
-    emailIndisponibilidade: str
+    emailIndisponibilidade: str = Field(
+        ..., description="Email para contato em caso de indisponibilidade"
+    )
     mensagem: str = Field(..., description="Mensagem de erro")
+    interrupcaoFornecimento: list[InterrupcaoAgregadaItem] = Field(
+        default_factory=list,
+        description="Lista vazia em caso de erro",
+    )

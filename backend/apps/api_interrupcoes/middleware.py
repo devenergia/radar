@@ -100,9 +100,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 status_code=429,
                 content={
                     "idcStatusRequisicao": 2,
-                    "desStatusRequisicao": "Erro",
-                    "mensagem": "Rate limit excedido. Limite: 10 requisicoes por minuto.",
                     "emailIndisponibilidade": "radar@roraimaenergia.com.br",
+                    "mensagem": "Rate limit excedido. Limite: 10 requisicoes por minuto.",
+                    "interrupcaoFornecimento": [],
                 },
                 headers={
                     "Retry-After": str(retry_after),
