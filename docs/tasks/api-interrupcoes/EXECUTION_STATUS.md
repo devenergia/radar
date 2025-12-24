@@ -11,12 +11,12 @@
 ```
 Fase 1 (Domain):        [██████████] 5/5  (100%) - COMPLETA
 Fase 2 (Application):   [██████████] 3/3  (100%) - COMPLETA
-Fase 3 (Infrastructure):[██████░░░░] 3/4  (75%)  - RAD-109 REQUER REFATORACAO
+Fase 3 (Infrastructure):[██████████] 4/4  (100%) - COMPLETA
 Fase 4 (Interfaces):    [██████████] 5/5  (100%) - EXISTENTE
 Fase 5 (Testes):        [██████████] 5/5  (100%) - COMPLETA
 Fase 6 (Seguranca):     [████░░░░░░] 2/4  (50%)  - EM PROGRESSO
 ─────────────────────────────────────────────────────────────
-TOTAL:                  [████████░░] 23/26 (88%)
+TOTAL:                  [████████░░] 24/26 (92%)
 ```
 
 > **ATENCAO:** Status revisado em 2025-12-19. Identificadas inconsistencias
@@ -109,17 +109,17 @@ TOTAL:                  [████████░░] 23/26 (88%)
 | Task | Titulo | Status | Inicio | Fim | Observacoes |
 |------|--------|--------|--------|-----|-------------|
 | RAD-108 | Oracle Connection Pool | `[E]` EXISTENTE | - | - | `infrastructure/database/oracle_connection.py` + `get_sync_session()` |
-| RAD-109 | Oracle InterrupcaoRepository | `[!]` **REFATORAR** | - | - | Usa OraclePool/async, deve usar Session/sync |
+| RAD-109 | Oracle InterrupcaoRepository | `[X]` CONCLUIDO | 2025-12-22 | 2025-12-22 | OracleInterrupcaoRepository sync - 27 testes, 97% coverage |
 | RAD-110 | Memory Cache Service | `[E]` EXISTENTE | - | - | `infrastructure/cache/memory_cache.py` |
 | RAD-111 | Settings/Config | `[E]` EXISTENTE | - | - | `infrastructure/config.py` |
 
 ### Pendencias Fase 3
 
-- [ ] **RAD-109**: Refatorar repository para usar `Session` sincrona (padrao projeto referencia)
+- [x] **RAD-109**: CONCLUIDO - OracleInterrupcaoRepository usando `Session` sincrona
 
-> **NOTA IMPORTANTE:** O repositorio atual usa `OraclePool` com metodos `async`.
-> Deve ser refatorado para usar `Session` SQLAlchemy com metodos `sync`,
-> conforme padrao do projeto de referencia (MJQEE-GFUZ).
+> **NOTA:** Novo `OracleInterrupcaoRepository` criado usando `Session` sincrona.
+> O repositorio legado (`InterrupcaoRepository`) ainda existe para compatibilidade.
+> Novos endpoints devem usar `OracleInterrupcaoRepository`.
 
 ---
 
@@ -303,6 +303,7 @@ TOTAL:                  [████████░░] 23/26 (88%)
 | 2025-12-22 | - | Config atualizado | Settings com env_prefix="RADAR_" |
 | 2025-12-22 | - | .env.example atualizado | Variaveis com prefixo RADAR_ |
 | 2025-12-22 | RAD-123 | Rate Limiting implementado | RateLimitMiddleware (10 req/min), 9 testes, 88% coverage |
+| 2025-12-22 | RAD-109 | OracleInterrupcaoRepository sync | Novo repository com Session sync, Protocol atualizado, 27 testes, 97% coverage |
 
 ---
 

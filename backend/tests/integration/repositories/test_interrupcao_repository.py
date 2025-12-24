@@ -421,14 +421,15 @@ class TestRepositorySingleton:
         """get_interrupcao_repository retorna uma instancia do repositorio."""
         # Arrange
         from backend.apps.api_interrupcoes.repositories.interrupcao_repository import (
+            InterrupcaoRepository as LegacyInterrupcaoRepository,
             get_interrupcao_repository,
         )
 
         # Act
         repo = await get_interrupcao_repository()
 
-        # Assert
-        assert isinstance(repo, InterrupcaoRepository)
+        # Assert - Verifica que e uma instancia da classe concreta do mesmo modulo
+        assert isinstance(repo, LegacyInterrupcaoRepository)
 
     @pytest.mark.asyncio
     async def test_get_interrupcao_repository_retorna_mesma_instancia(self) -> None:
