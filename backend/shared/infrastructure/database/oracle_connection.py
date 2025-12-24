@@ -56,9 +56,10 @@ def get_env_var(name: str, default: Optional[str] = None) -> Optional[str]:
     Busca variável de ambiente com suporte a prefixo de ambiente.
 
     Ordem de prioridade:
-    1. {ENV}_{NAME} (ex: PRD_ORACLE_DSN)
-    2. {NAME} (ex: ORACLE_DSN)
-    3. default
+    1. {ENV}_RADAR_{NAME} (ex: PRD_RADAR_ORACLE_DSN)
+    2. {ENV}_{NAME} (ex: PRD_ORACLE_DSN) - fallback legado
+    3. {NAME} (ex: ORACLE_DSN)
+    4. default
 
     Args:
         name: Nome da variável (sem prefixo)
@@ -69,7 +70,12 @@ def get_env_var(name: str, default: Optional[str] = None) -> Optional[str]:
     """
     env_prefix = get_environment()
 
-    # Tenta com prefixo do ambiente
+    # Tenta com prefixo completo do ambiente (padrao novo)
+    radar_prefixed = os.getenv(f"{env_prefix}_RADAR_{name}")
+    if radar_prefixed:
+        return radar_prefixed
+
+    # Fallback para prefixo legado
     prefixed_value = os.getenv(f"{env_prefix}_{name}")
     if prefixed_value:
         return prefixed_value

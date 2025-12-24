@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        env_prefix="RADAR_",
+        env_prefix="PRD_RADAR_",
         case_sensitive=False,
         extra="ignore",
     )
@@ -30,15 +30,16 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Banco de Dados Oracle
-    db_user: str = Field(..., description="Usuario do banco de dados")
-    db_password: str = Field(..., description="Senha do banco de dados")
-    db_connection_string: str = Field(
-        ..., description="String de conexao Oracle"
-    )
-    db_pool_min: int = Field(default=2, ge=1)
-    db_pool_max: int = Field(default=10, ge=1)
-    db_pool_increment: int = Field(default=1, ge=1)
-    db_pool_timeout: int = Field(default=60, ge=1)
+    oracle_user: str = Field(..., description="Usuario do banco de dados Oracle")
+    oracle_password: str = Field(default="", description="Senha do banco de dados Oracle")
+    oracle_dsn: str = Field(..., description="DSN de conexao Oracle (//host:port/service)")
+    oracle_schema: str = Field(default="RADAR", description="Schema Oracle")
+
+    # Pool de conexoes
+    pool_min: int = Field(default=2, ge=1)
+    pool_max: int = Field(default=10, ge=1)
+    pool_increment: int = Field(default=1, ge=1)
+    pool_timeout: int = Field(default=60, ge=1)
 
     # Autenticacao
     api_key: str = Field(..., description="Chave de API para autenticacao")

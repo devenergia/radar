@@ -11,13 +11,13 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 # Configurar variaveis de ambiente para testes ANTES de importar a app
-# Settings usa prefixo RADAR_ para todas as variaveis
-os.environ["RADAR_API_KEY"] = "test-api-key-12345"
-os.environ["RADAR_DB_USER"] = "test_user"
-os.environ["RADAR_DB_PASSWORD"] = "test_password"
-os.environ["RADAR_DB_CONNECTION_STRING"] = "localhost:1521/XE"
-os.environ["RADAR_EMAIL_INDISPONIBILIDADE"] = "test@test.com"
-os.environ["RADAR_ENVIRONMENT"] = "development"
+# Settings usa prefixo PRD_RADAR_ para todas as variaveis
+os.environ["PRD_RADAR_API_KEY"] = "test-api-key-12345"
+os.environ["PRD_RADAR_ORACLE_USER"] = "test_user"
+os.environ["PRD_RADAR_ORACLE_PASSWORD"] = "test_password"
+os.environ["PRD_RADAR_ORACLE_DSN"] = "localhost:1521/XE"
+os.environ["PRD_RADAR_EMAIL_INDISPONIBILIDADE"] = "test@test.com"
+os.environ["PRD_RADAR_ENVIRONMENT"] = "development"
 
 
 def _clear_module_cache() -> None:

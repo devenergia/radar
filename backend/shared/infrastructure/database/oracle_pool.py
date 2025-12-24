@@ -40,13 +40,13 @@ class OraclePool:
 
         try:
             self._pool = oracledb.create_pool_async(
-                user=settings.db_user,
-                password=settings.db_password,
-                dsn=settings.db_connection_string,
-                min=settings.db_pool_min,
-                max=settings.db_pool_max,
-                increment=settings.db_pool_increment,
-                timeout=settings.db_pool_timeout,
+                user=settings.oracle_user,
+                password=settings.oracle_password,
+                dsn=settings.oracle_dsn,
+                min=settings.pool_min,
+                max=settings.pool_max,
+                increment=settings.pool_increment,
+                timeout=settings.pool_timeout,
             )
         except Exception as e:
             raise DatabaseConnectionError(e, "RADAR") from e

@@ -48,19 +48,21 @@ target_metadata = Base.metadata
 def get_url() -> str:
     """Retorna URL de conexao Oracle formatada para SQLAlchemy.
 
-    Formato: oracle+oracledb://user:password@host:port/?service_name=SERVICE
+    Formato: oracle+oracledb://user:password@dsn
+
+    O DSN pode estar no formato:
+    - //host:port/service_name
+    - host:port/service_name
 
     Returns:
         URL de conexao SQLAlchemy
     """
     settings = get_settings()
 
-    # Formato para Oracle com oracledb driver
-    return (
-        f"oracle+oracledb://{settings.db_user}:{settings.db_password}"
-        f"@{settings.db_host}:{settings.db_port}"
-        f"/?service_name={settings.db_service}"
-    )
+    # DSN no formato //host:port/service ou host:port/service
+    dsn = settings.oracle_dsn.lstrip("/")
+
+    return f"oracle+oracledb://{settings.oracle_user}:{settings.oracle_password}@{dsn}"
 
 
 def run_migrations_offline() -> None:
