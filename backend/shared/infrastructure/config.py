@@ -47,6 +47,12 @@ class Settings(BaseSettings):
         default="*", description="IPs permitidos (separados por virgula)"
     )
 
+    # IP Whitelist - redes adicionais para dev/test (CIDRs separados por virgula)
+    ip_whitelist_extra: str | None = Field(
+        default=None,
+        description="CIDRs adicionais para whitelist (ex: 10.0.0.0/8,192.168.0.0/16)",
+    )
+
     # Cache
     cache_ttl_seconds: int = Field(default=300, ge=1)
     cache_stale_ttl_seconds: int = Field(default=3600, ge=1)

@@ -2,7 +2,7 @@
 
 **Projeto:** RADAR - API Quantitativo de Interrupcoes Ativas
 **Inicio:** 2025-12-19
-**Ultima Atualizacao:** 2025-12-24 (RAD-125 CONCLUIDO - API COMPLETA!)
+**Ultima Atualizacao:** 2025-12-24 (RAD-130 IP Whitelist implementado)
 
 ---
 
@@ -192,8 +192,8 @@ TOTAL:                  [██████████] 27/27 (100%) - API COMP
 | Metrica | Valor |
 |---------|-------|
 | Total Tasks | 5 |
-| Concluidas | 4 |
-| Canceladas | 1 |
+| Concluidas | 5 |
+| Canceladas | 0 |
 | Em Progresso | 0 |
 | Bloqueadas | 0 |
 | Progresso | 100% |
@@ -206,13 +206,13 @@ TOTAL:                  [██████████] 27/27 (100%) - API COMP
 | RAD-123 | Rate Limiting (10 req/min) | `[X]` CONCLUIDO | 2025-12-22 | 2025-12-22 | RateLimitMiddleware - 9 testes, 88% coverage |
 | RAD-124 | Logging e Auditoria | `[X]` CONCLUIDO | 2025-12-24 | 2025-12-24 | AuditLogger + AuditMiddleware - 33 testes, 100% coverage |
 | RAD-125 | Validacao Final ANEEL V4 | `[X]` CONCLUIDO | 2025-12-24 | 2025-12-24 | Formato ANEEL V4 corrigido, OpenAPI atualizado, 253 testes |
-| RAD-130 | IP Whitelist ANEEL | `[#]` CANCELADO | - | 2025-12-24 | WAF configurado pela equipe de infra |
+| RAD-130 | IP Whitelist ANEEL | `[X]` CONCLUIDO | 2025-12-24 | 2025-12-24 | IpWhitelistMiddleware - 33 testes, 92% coverage |
 
 ### Pendencias Fase 6
 
 - [x] RAD-123: Implementar rate limiting (10 req/min)
 - [x] RAD-124: Implementar logging e auditoria estruturada
-- [x] RAD-130: ~~IP whitelist~~ CANCELADO - WAF configurado pela infra
+- [x] RAD-130: IP whitelist implementado (200.198.220.128/25) - 33 testes, 92% coverage
 - [x] RAD-125: Validacao de conformidade ANEEL V4 CONCLUIDA
 
 ---
@@ -258,7 +258,7 @@ TOTAL:                  [██████████] 27/27 (100%) - API COMP
 
 | # | Task | Descricao | Impacto |
 |---|------|-----------|---------|
-| 12 | ~~RAD-130~~ | ~~IP Whitelist~~ | ~~Seguranca~~ CANCELADO (WAF) |
+| 12 | ~~RAD-130~~ | ~~IP Whitelist~~ | ~~Seguranca~~ CONCLUIDO |
 | 13 | RAD-125 | Validacao Final ANEEL | Compliance - UNICA PENDENTE |
 
 ---
@@ -309,7 +309,7 @@ TOTAL:                  [██████████] 27/27 (100%) - API COMP
 | 2025-12-22 | RAD-123 | Rate Limiting implementado | RateLimitMiddleware (10 req/min), 9 testes, 88% coverage |
 | 2025-12-22 | RAD-109 | OracleInterrupcaoRepository sync | Novo repository com Session sync, Protocol atualizado, 27 testes, 97% coverage |
 | 2025-12-24 | RAD-124 | Logging e Auditoria | AuditLogger + AuditMiddleware, 33 testes, 100% coverage |
-| 2025-12-24 | RAD-130 | Cancelado | Bloqueio de IP implementado via WAF pela equipe de infra |
+| 2025-12-24 | RAD-130 | Implementado | IpWhitelistMiddleware para bloco ANEEL 200.198.220.128/25, 33 testes, 92% coverage |
 | 2025-12-24 | RAD-125 | Validacao ANEEL V4 | Corrigido formato resposta: interrupcaoFornecimento, removido desStatusRequisicao |
 | 2025-12-24 | RAD-125 | OpenAPI atualizado | Documentacao OpenAPI reescrita conforme Oficio Circular 14/2025-SFE/ANEEL |
 | 2025-12-24 | - | API COMPLETA | Todas as 27 tasks concluidas, 253 testes passando, 100% conformidade ANEEL |
@@ -395,6 +395,7 @@ pytest backend/tests/ --cov=backend --cov-report=html --cov-fail-under=80
 | Campos obrigatorios | OK |
 | Autenticacao x-api-key | OK |
 | Rate Limiting 10 req/min | OK |
+| IP Whitelist 200.198.220.128/25 | OK |
 | Historico 7 dias | PENDENTE (Abril/2026) |
 
 ---
