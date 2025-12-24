@@ -1,6 +1,7 @@
 """Middlewares da API 1 - Interrupcoes."""
 
 import time
+import uuid
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -12,6 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from backend.shared.infrastructure.http.aneel_response import AneelResponseBuilder
 from backend.shared.infrastructure.logger import get_logger, log_request
+from backend.shared.infrastructure.logging.audit import get_audit_logger
 
 # Type alias para o callback do middleware
 RequestResponseEndpoint = Callable[[Request], Awaitable[Response]]
@@ -173,3 +175,93 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                 status_code=500,
                 content=AneelResponseBuilder.internal_error(),
             )
+
+
+class AuditMiddleware(BaseHTTPMiddleware):
+    """Middleware para auditoria de requisicoes conforme RAD-124."""
+
+    EXCLUDED_PATHS = frozenset(["/", "/health", "/docs", "/openapi.json", "/redoc"])
+
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        """Audita todas as requisicoes."""
+        audit = get_audit_logger()
+
+        # Gerar request_id unico
+        request_id = str(uuid.uuid4())[:8]
+        request.state.request_id = request_id
+
+        # Paths excluidos
+        if request.url.path in self.EXCLUDED_PATHS:
+            response = await call_next(request)
+            response.headers["X-Request-ID"] = request_id
+            return response
+
+        # Extrair informacoes
+        client_ip = self._get_client_ip(request)
+        api_key = request.headers.get("x-api-key")
+        method = request.method
+        path = request.url.path
+
+        # Log inicio
+        audit.log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            api_key=api_key,
+            method=method,
+            path=path,
+        )
+
+        # Processar
+        start_time = time.perf_counter()
+        try:
+            response = await call_next(request)
+            duration_ms = (time.perf_counter() - start_time) * 1000
+
+            # Log fim
+            audit.log_response(
+                request_id=request_id,
+                status_code=response.status_code,
+                duration_ms=duration_ms,
+            )
+
+            # Headers de correlacao
+            response.headers["X-Request-ID"] = request_id
+
+            return response
+
+        except Exception as e:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            audit.log_response(
+                request_id=request_id,
+                status_code=500,
+                duration_ms=duration_ms,
+                error=str(e),
+            )
+            raise
+
+    def _get_client_ip(self, request: Request) -> str:
+        """
+        Obtem IP real do cliente.
+
+        Considera headers de proxy reverso:
+        - X-Forwarded-For
+        - X-Real-IP
+        """
+        # Tentar X-Forwarded-For primeiro (lista de IPs separados por virgula)
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            # Primeiro IP e o cliente original
+            return forwarded_for.split(",")[0].strip()
+
+        # Tentar X-Real-IP
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip:
+            return real_ip.strip()
+
+        # Fallback para IP direto
+        if request.client:
+            return request.client.host
+
+        return "unknown"
